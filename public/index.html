@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TikTok LIVE Automation - Control Dashboard</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+  <h1>TikTok LIVE Automation</h1>
+  <div id="statusBar" class="status-bar">
+    <span class="pill" id="pill-obs">OBS: checking...</span>
+    <span class="pill" id="pill-ws">WebSocket: checking...</span>
+    <span class="pill" id="pill-tf">TikFinity bridge: checking...</span>
+    <span class="pill" id="pill-queue">Queue: 0</span>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Scene Controls</h2>
+    <div class="button-row" id="sceneButtons"></div>
+    <p class="hint">Current scene: <span id="currentScene">-</span></p>
+  </section>
+
+  <section class="card">
+    <h2>Background</h2>
+    <div class="button-row" id="backgroundButtons"></div>
+    <p class="hint">Active theme: <span id="currentBackground">-</span></p>
+  </section>
+
+  <section class="card">
+    <h2>Music</h2>
+    <div class="button-row" id="musicTrackButtons"></div>
+    <div class="button-row">
+      <button data-action="pause">Pause</button>
+      <button data-action="resume">Resume</button>
+      <button data-action="stop">Stop</button>
+    </div>
+    <div class="volume-row">
+      <label for="volumeSlider">Volume</label>
+      <input type="range" id="volumeSlider" min="0" max="100" value="70" />
+      <span id="volumeValue">70%</span>
+    </div>
+    <p class="hint">Now playing: <span id="currentTrack">none</span> (<span id="musicState">stopped</span>)</p>
+  </section>
+
+  <section class="card">
+    <h2>Camera</h2>
+    <div class="button-row">
+      <button data-camera="on">Camera ON</button>
+      <button data-camera="off">Camera OFF</button>
+    </div>
+    <p class="hint">Default is OFF (animated background only). When ON, the webcam layer sits above the background without interrupting it. State: <span id="cameraState">-</span></p>
+  </section>
+
+  <section class="card">
+    <h2>VIP / Alert Test Triggers</h2>
+    <p class="hint">These always show, regardless of thresholds - use them to QA the visual templates.</p>
+    <div class="button-row">
+      <button data-trigger="gift">Test Gift Alert</button>
+      <button data-trigger="welcome">Test VIP Welcome</button>
+      <button data-trigger="mvp" class="gold">Test MVP Animation</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Test Mode (simulated TikFinity events)</h2>
+    <p class="hint">These go through the real qualification logic (MVP diamond threshold, welcome level threshold) - no TikTok LIVE required.</p>
+    <div class="button-row">
+      <button data-sim="normal-gift">Simulate Normal Gift</button>
+      <button data-sim="mvp-gift" class="gold">Simulate Big/MVP Gift</button>
+      <button data-sim="vip-join" class="gold">Simulate High-Level Join</button>
+      <button data-sim="non-qualifying-join">Simulate Regular Join (should NOT show welcome)</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Automation Status</h2>
+    <pre id="statusJson">loading...</pre>
+  </section>
+
+  <section class="card">
+    <h2>Logs</h2>
+    <div class="button-row">
+      <button id="refreshLogsBtn">Refresh Logs</button>
+    </div>
+    <pre id="logsView" class="log-view">loading...</pre>
+  </section>
+</main>
+
+<footer>
+  <p>Dashboard never starts a TikTok LIVE and never logs into TikTok. All controls act on the local OBS instance only.</p>
+</footer>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "_comment": "Tune thresholds/durations here - no code changes needed.",
+  "gift": {
+    "alertDurationMs": 5000
+  },
+  "mvp": {
+    "_comment": "A gift qualifies for the full MVP treatment when its diamond value is >= minDiamondValue.",
+    "minDiamondValue": 500,
+    "durationMs": 10000
+  },
+  "welcome": {
+    "_comment": "TikFinity does not currently expose a documented viewer-level/tier field for join events (see README limitation notes). This threshold is here and wired end-to-end for when/if that data becomes available; minLevel is compared against payload.level if present.",
+    "minLevel": 20,
+    "durationMs": 6000
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "_comment": "Maps normalized TikFinity events to OBS actions. Edit freely - no code changes needed. Each rule: eventType + optional minValue (checked against payload.diamondCount for gifts / payload.count for likes) + action.",
+  "rules": [
+    {
+      "eventType": "gift",
+      "minValue": 1,
+      "valueField": "diamondCount",
+      "action": { "kind": "logOnly", "note": "Gift received - replace with e.g. showSource for an alert overlay once one exists in the MAIN scene" }
+    },
+    {
+      "eventType": "follow",
+      "action": { "kind": "logOnly", "note": "New follower - hook up a thank-you overlay source here later" }
+    },
+    {
+      "eventType": "comment",
+      "action": { "kind": "logOnly" }
+    },
+    {
+      "eventType": "like",
+      "action": { "kind": "logOnly" }
+    },
+    {
+      "eventType": "share",
+      "action": { "kind": "logOnly" }
+    }
+  ]
+}
