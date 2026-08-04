@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Battle Countdown Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  html, body { background: transparent; }
+  .stage { overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 300ms ease;
+    background: radial-gradient(ellipse at 50% 40%, rgba(212,175,55,0.22), transparent 65%),
+      linear-gradient(180deg, rgba(5,3,1,0.55) 0%, rgba(5,3,1,0.75) 100%);
+  }
+  .backdrop.show { opacity: 1; }
+
+  .content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    opacity: 0;
+  }
+  .content.show { opacity: 1; }
+
+  .label { font-size: 24px; letter-spacing: 6px; text-transform: uppercase; }
+  .number {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 220px;
+    line-height: 1;
+    color: #fff6d6;
+    text-shadow: 0 0 20px #f6e6a8, 0 0 44px #d4af37, 0 0 90px rgba(212,175,55,0.6);
+  }
+  .number.pulse { animation: numPulse 1000ms ease-out; }
+  @keyframes numPulse {
+    0% { transform: scale(1.35); opacity: 0.3; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .guests {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 900px;
+  }
+  .guest-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px 8px 8px;
+  }
+  .guest-chip img { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #d4af37; object-fit: cover; }
+  .guest-chip .gname { font-size: 18px; }
+  .guest-chip .gpoints { font-size: 15px; color: #d4af37; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="backdrop" id="backdrop"></div>
+  <div id="content" class="content">
+    <span class="label gold-shimmer" id="label">Final Countdown</span>
+    <div class="number" id="number">10</div>
+    <div class="guests" id="guests"></div>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const backdrop = document.getElementById('backdrop');
+  const content = document.getElementById('content');
+  const numberEl = document.getElementById('number');
+  const labelEl = document.getElementById('label');
+  const guestsEl = document.getElementById('guests');
+
+  const queue = createOverlayQueue(async (job) => {
+    labelEl.textContent = job.label || 'Final Countdown';
+    guestsEl.innerHTML = (job.guests || []).map((g) => `
+      <div class="card guest-chip">
+        <img src="${g.avatarUrl || ''}" />
+        <span class="gname username">${g.name}</span>
+        <span class="gpoints">${g.points} pts</span>
+      </div>
+    `).join('');
+
+    backdrop.classList.add('show');
+    content.classList.add('show');
+
+    const seconds = job.seconds || 10;
+    const tickMs = job.tickMs || 1000;
+    for (let n = seconds; n >= 0; n -= 1) {
+      numberEl.textContent = n;
+      numberEl.classList.remove('pulse');
+      void numberEl.offsetWidth;
+      numberEl.classList.add('pulse');
+      await waitMs(tickMs);
+    }
+
+    backdrop.classList.remove('show');
+    content.classList.remove('show');
+  });
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'battle-countdown') {
+      queue.push({
+        label: msg.label,
+        guests: msg.guests,
+        seconds: msg.seconds,
+        tickMs: msg.tickMs,
+      });
+    }
+  });
+</script>
+</body>
+</html>

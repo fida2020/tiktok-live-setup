@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Follow Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage { display: flex; align-items: flex-start; justify-content: flex-end; padding: 14px; }
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px 10px 20px;
+    max-width: 480px;
+    flex-direction: row-reverse;
+  }
+  .icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 35% 30%, #fff6d6, #d4af37 65%, #8a6a1f);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .text-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; align-items: flex-end; }
+  .label { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .name { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div id="badge" class="badge card" style="visibility: hidden;">
+    <div class="icon">&#9733;</div>
+    <div class="text-col">
+      <span class="label gold-shimmer">New Follower</span>
+      <span id="name" class="name username"></span>
+    </div>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const badge = document.getElementById('badge');
+  const nameEl = document.getElementById('name');
+
+  const queue = createOverlayQueue(async (job) => {
+    nameEl.textContent = job.user;
+    badge.style.setProperty('--hold-ms', job.durationMs + 'ms');
+    badge.style.visibility = 'visible';
+    badge.classList.remove('entrance-slide-right');
+    void badge.offsetWidth;
+    badge.classList.add('entrance-slide-right');
+    await waitMs(job.durationMs);
+    badge.style.visibility = 'hidden';
+  });
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'follow') {
+      queue.push({ user: msg.user, durationMs: msg.durationMs || 4000 });
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Leaderboard Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage { display: flex; align-items: flex-end; padding: 10px; }
+  .panel { width: 100%; padding: 14px 16px; }
+  .title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; display: block; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .row + .row { border-top: 1px solid rgba(212, 175, 55, 0.18); }
+  .rank {
+    width: 22px;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    color: #d4af37;
+  }
+  .row-name { flex: 1; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-total { font-size: 13px; color: #cfc6ab; }
+  .empty { font-size: 13px; color: #7a7261; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="panel card">
+    <span class="title gold-shimmer">Top Gifters</span>
+    <div id="rows"></div>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const rowsEl = document.getElementById('rows');
+  const MEDALS = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+
+  function render(top) {
+    if (!top || top.length === 0) {
+      rowsEl.innerHTML = '<div class="empty">No gifts yet</div>';
+      return;
+    }
+    rowsEl.innerHTML = top.slice(0, 3).map((entry, i) => `
+      <div class="row">
+        <span class="rank">${MEDALS[i] || (i + 1)}</span>
+        <span class="row-name username">${entry.user}</span>
+        <span class="row-total">${Number(entry.total).toLocaleString()}</span>
+      </div>
+    `).join('');
+  }
+
+  render([]);
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'leaderboard') {
+      render(msg.top);
+    }
+  });
+</script>
+</body>
+</html>

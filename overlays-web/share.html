@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Share Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage { display: flex; align-items: center; justify-content: center; padding: 10px; }
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 26px;
+  }
+  .icon { font-size: 24px; }
+  .text-col { display: flex; flex-direction: column; gap: 2px; }
+  .label { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .name { font-size: 20px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div id="badge" class="badge card" style="visibility: hidden;">
+    <div class="icon">&#8599;</div>
+    <div class="text-col">
+      <span id="name" class="name username"></span>
+      <span class="label gold-shimmer">shared the live!</span>
+    </div>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const badge = document.getElementById('badge');
+  const nameEl = document.getElementById('name');
+
+  const queue = createOverlayQueue(async (job) => {
+    nameEl.textContent = job.user;
+    badge.style.setProperty('--hold-ms', job.durationMs + 'ms');
+    badge.style.visibility = 'visible';
+    badge.classList.remove('entrance-rise');
+    void badge.offsetWidth;
+    badge.classList.add('entrance-rise');
+    await waitMs(job.durationMs);
+    badge.style.visibility = 'hidden';
+  });
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'share') {
+      queue.push({ user: msg.user, durationMs: msg.durationMs || 4500 });
+    }
+  });
+</script>
+</body>
+</html>

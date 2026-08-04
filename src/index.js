@@ -9,6 +9,8 @@ const { EventBridge } = require('./tikfinity/eventBridge');
 const { startWebhookAdapter } = require('./tikfinity/adapters/webhookAdapter');
 const { attachActionMapper } = require('./tikfinity/actionMapper');
 const { attachOverlayDispatcher } = require('./overlays/overlayDispatcher');
+const { startOverlayServer } = require('./overlays/overlayServer');
+const goalState = require('./overlays/goalState');
 const { BackgroundController } = require('./backgrounds/backgroundController');
 const { MusicController } = require('./music/musicController');
 const { CameraController } = require('./camera/cameraController');
@@ -98,9 +100,15 @@ async function main() {
   });
   shutdownHooks.push(async () => stopHealthMonitor());
 
+  const overlayServer = startOverlayServer();
+  shutdownHooks.push(() => new Promise((resolve) => overlayServer.server.close(resolve)));
+  // Prime the replay cache so a browser source that connects before any
+  // events fire still shows the goal bar's target/label immediately.
+  overlayServer.broadcast('goal-config', goalState.getGoal());
+
   const eventBridge = new EventBridge();
   attachActionMapper(eventBridge, obsClient);
-  const overlayQueue = attachOverlayDispatcher(eventBridge, obsClient);
+  const overlayQueue = attachOverlayDispatcher(eventBridge, obsClient, overlayServer);
 
   const webhookServer = startWebhookAdapter(eventBridge);
   if (webhookServer) {
@@ -116,6 +124,7 @@ async function main() {
     overlayQueue,
     eventBridge,
     obsProcessManager,
+    overlayServer,
   });
   shutdownHooks.push(() => new Promise((resolve) => dashboardServer.close(resolve)));
 

@@ -25,16 +25,9 @@ async function setEnabled(client, sourceName, enabled) {
   await new Promise((r) => setTimeout(r, 500));
   await shot(client, 'layer_bg_plus_gift');
 
-  await setEnabled(client, 'MVPSceneImage', true);
-  await setEnabled(client, 'MVPUsernameText', true);
-  await new Promise((r) => setTimeout(r, 500));
-  await shot(client, 'layer_bg_plus_gift_plus_mvp');
-
   // cleanup
   await setEnabled(client, 'GiftCardImage', false);
   await setEnabled(client, 'GiftUsernameText', false);
-  await setEnabled(client, 'MVPSceneImage', false);
-  await setEnabled(client, 'MVPUsernameText', false);
 
   console.log('done');
   await client.disconnect();

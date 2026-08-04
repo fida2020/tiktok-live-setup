@@ -18,20 +18,57 @@ Phone camera ──(vdo.ninja browser source)──> OBS Studio (scene: TikTokLi
                                                  │
                                                  ├─ Virtual Camera ──> TikTok LIVE Studio (Camera source) ──> TikTok LIVE
                                                  │
-                                                 └─ obs-websocket (localhost:4455)
-                                                          ▲
-TikTok viewers ─> TikTok LIVE ─> TikFinity (Electron app) ─(local webhook)─> Node controller (this repo)
-                                                                                   │
-                                                                     reacts per config/eventActions.json
-                                                                     + config/vipConfig.json, and drives
-                                                                     OBS scenes/backgrounds/music/overlays
-                                                                     via src/obs, src/backgrounds, src/music,
-                                                                     src/overlays. Exposes a local dashboard
-                                                                     (public/ + src/dashboard) on :4000.
+                                                 ├─ obs-websocket (localhost:4455)
+                                                 │        ▲
+                                                 │        │
+                              ┌──────────────────┴────────────────────┐
+                              │         Node controller (this repo)   │
+TikTok viewers ─> TikTok LIVE ┤  src/index.js reacts per              │
+  │                           │  config/eventActions.json +           │
+  │  (Gift only, via          │  config/vipConfig.json, drives        │
+  │   Streamer.bot action)    │  OBS scenes/backgrounds/music/camera  │
+  ▼                           │  via src/obs, src/backgrounds,        │
+TikFinity (Electron app)      │  src/music. Exposes a local control   │
+  ─(local webhook)───────────>│  dashboard (public/ + src/dashboard)  │
+                              │  on :4000.                            │
+  ┌───────────────────────────┴────────────────────┐                 │
+  │ Direct TikTok listener (separate process,       │                 │
+  │ src/tiktokDirect/tiktokListener.js, read-only,   │                 │
+  │ no login) - Join/Follow/Share/Like/Viewer count  │────────────────┘
+  │ -> forwards to the same local webhook bridge     │
+  └───────────────────────────────────────────────────┘
+                              │
+                              ▼
+              src/overlays/overlayDispatcher.js
+                (both pipelines feed this)
+                              │
+                              ▼
+        src/overlays/overlayServer.js (:4100, WebSocket)
+                              │
+                              ▼
+     overlays-web/*.html — black-gold animated OBS Browser
+     Sources (join/follow/share/milestone/leaderboard/goal
+     bar/big gift/MVP/box battle/countdown), added directly
+     into the MAIN/STARTING/BRB/ENDING scenes.
 ```
 
-The controller never logs into TikTok and never starts a LIVE itself — it only talks to a
-local, already-running OBS instance and to TikFinity's local webhook bridge.
+The controller never logs into TikTok and never starts a LIVE itself. Two independent,
+read-only pipelines feed it events:
+
+- **TikFinity → Streamer.bot → local webhook** — the only source wired up for `gift` events
+  (see [Manual steps](#manual-steps-on-the-new-vps)). Small gifts show the existing OBS-native
+  gift card; gifts above `config/vipConfig.json`'s `bigGift`/`mvp` thresholds instead drive the
+  full-screen black-gold browser overlays.
+- **Direct TikTok listener** (`npm run tiktok-listener`, `src/tiktokDirect/tiktokListener.js`) —
+  a separate long-running process that connects straight to TikTok LIVE's public event feed for
+  your own username (no login, no TikFinity). Forwards Join/Follow/Share/Like-milestones/Viewer
+  milestones/Leaderboard/Goal-progress to the same local webhook bridge. Deliberately does **not**
+  forward gifts — that stays TikFinity's job, so gifts never double-fire.
+
+Both pipelines converge in `src/overlays/overlayDispatcher.js`, which drives either legacy
+OBS-native sources (gift card, VIP welcome card) or broadcasts over `src/overlays/overlayServer.js`
+(a WebSocket server on :4100) to the animated HTML pages in `overlays-web/`, added into OBS as
+Browser Sources.
 
 ## Folder structure
 
@@ -42,21 +79,34 @@ local, already-running OBS instance and to TikFinity's local webhook bridge.
 │   ├── backgrounds/         looping background-video controller
 │   ├── music/               background music playlist controller
 │   ├── camera/              virtual camera control
-│   ├── overlays/            alert/overlay dispatch + queueing
+│   ├── overlays/            alert/overlay dispatch + queueing + web overlay server
+│   │   ├── overlayController.js   OBS-native gift card / VIP welcome card visuals
+│   │   ├── overlayDispatcher.js   routes both event pipelines to the right visual
+│   │   ├── overlayServer.js       :4100 static file host + WebSocket for overlays-web/
+│   │   ├── goalState.js           persisted stream-goal target/label (state/goal.json)
+│   │   └── vipList.js             config/vipList.json read/write (VIP welcome + auto-add battle winners)
+│   ├── tiktokDirect/        standalone direct-to-TikTok listener (`npm run tiktok-listener`)
 │   ├── playlist/            media probing / ping-pong playback
-│   ├── tikfinity/           local webhook bridge + event → action mapping
+│   ├── tikfinity/           local webhook bridge + event → action mapping (gift events)
 │   ├── reliability/         health monitor, OBS process manager, state store, single-instance lock
 │   ├── dashboard/           local control dashboard server
 │   ├── setup/               one-time OBS setup helper (`npm run setup:obs`)
-│   └── test/                smoke tests / manual verification scripts
+│   ├── testmode/            fake-event payload generators used by the dashboard's Test Mode buttons
+│   └── test/                smoke tests (`npm test`) / manual verification scripts
+├── overlays-web/            black-gold animated HTML/CSS/JS OBS Browser Source pages (join, follow,
+│                            share, milestone, leaderboard, goal bar, big gift, MVP, box battle,
+│                            battle countdown/drop, starting/BRB/ending screens); served by
+│                            src/overlays/overlayServer.js, driven live over its WebSocket
 ├── config/
-│   ├── eventActions.json    maps TikFinity events -> OBS actions (edit freely, no code changes needed)
-│   └── vipConfig.json       gift/VIP/welcome thresholds and alert durations
-├── assets/                  overlay graphics, sound effects, avatar placeholders (small, included)
+│   ├── eventActions.json    maps normalized events -> simple OBS actions (extension point; the real
+│   │                        gift/join/follow/etc. visuals are handled in code, see overlayDispatcher.js)
+│   ├── vipConfig.json       gift tier thresholds, alert/overlay durations, milestone thresholds
+│   └── vipList.json         TikTok usernames that get the special VIP welcome banner on join
+├── assets/                  overlay graphics, sound effects, background video clips, avatar placeholders
 ├── public/                  static files for the local dashboard (HTML/CSS/JS)
 ├── obs/                     backup of the OBS "TikTokLive" profile + scene collection (secrets stripped)
 ├── vps-setup/               VPS provisioning/diagnostic scripts (virtual display, VCam diagnostics)
-├── docs/                    known-issue writeups (e.g. audio routing on Windows Server RDP)
+├── docs/                    known-issue writeups + docs/GOING_LIVE_CHECKLIST.md (plain-steps runbook)
 ├── backgrounds/, music/, media/, logs/, state/   empty on purpose — see below, populated at runtime
 ├── reference/               placeholder; a local design-reference video was excluded (see reference/README.md)
 ├── .env.example             template for required environment variables
@@ -74,7 +124,8 @@ local, already-running OBS instance and to TikFinity's local webhook bridge.
 | obs-websocket | bundled with OBS 28+ | Lets the controller drive OBS remotely |
 | VB-Audio Virtual Cable | latest | Virtual audio routing (see audio caveat below) |
 | TikTok LIVE Studio | 1.33.0 | Actual TikTok broadcast client |
-| TikFinity | 2.0.0 | TikTok LIVE event capture -> local webhook |
+| TikFinity | 2.0.0 | TikTok LIVE event capture -> local webhook (Gift events only) |
+| Streamer.bot | latest (free) | Go-between for TikFinity's Gift action -> a "Fetch URL" call into the controller's webhook bridge; see `docs/GOING_LIVE_CHECKLIST.md` for the one-time wiring |
 | Parsec Virtual Display Driver | 0.45.0.0 | Virtual monitor so OBS can render on a headless/RDP VPS |
 | Cursor | 3.13.25 | Editor used for this project (optional) |
 | Claude Code | 2.1.220 (`@anthropic-ai/claude-code` via npm) | AI coding assistant used for this project (optional) |
@@ -94,7 +145,9 @@ local, already-running OBS instance and to TikFinity's local webhook bridge.
 3. Install **OBS Studio** (32.x). The `obs-websocket` plugin ships with it.
 4. Install **VB-Audio Virtual Cable**.
 5. Install **TikTok LIVE Studio** and log in with your TikTok account (manual — see below).
-6. Install **TikFinity** and log in / connect it to your TikTok account (manual — see below).
+6. Install **TikFinity** and log in / connect it to your TikTok account (manual — see below), and
+   install **Streamer.bot** — the one-time Gift-event wiring between them is in
+   `docs/GOING_LIVE_CHECKLIST.md`.
 7. Clone this repo to `C:\TikTokLiveAutomation` (or update `.env`'s paths if you use a different location):
    ```
    git clone https://github.com/fida2020/tiktok-live-setup.git C:\TikTokLiveAutomation
@@ -106,11 +159,17 @@ local, already-running OBS instance and to TikFinity's local webhook bridge.
    bridge token, ports). **Never commit `.env`.**
 10. Start OBS, select the `TikTokLive` profile/scene collection, start the Virtual Camera.
 11. Run `npm run setup:obs` once to verify the controller can reach OBS.
-12. Run `npm start` to launch the controller (health monitor, TikFinity bridge, dashboard on
-    `http://127.0.0.1:4000` by default).
+12. Run `npm start` to launch the controller (health monitor, TikFinity bridge, overlay web server
+    on `http://127.0.0.1:4100`, dashboard on `http://127.0.0.1:4000` by default).
 13. Point TikFinity's webhook/Streamer.bot-style action config at the controller's bridge port
     (`TIKFINITY_BRIDGE_PORT` in `.env`, default 3939) — this mapping lives inside TikFinity's own
     UI and isn't exportable as a file (see Manual steps).
+14. Set `TIKTOK_USERNAME` in `.env` (your own TikTok handle, no `@`), then in a second terminal run
+    `npm run tiktok-listener` — connects read-only to TikTok LIVE's public event feed for
+    Join/Follow/Share/milestones/leaderboard/goal-progress (no login, no TikFinity involved).
+15. In OBS, add the `overlays-web/` pages as Browser Sources — `npm run setup:obs` (step 11) already
+    does this for you if run after this point; see `docs/GOING_LIVE_CHECKLIST.md` for the full
+    every-time-before-going-live sequence.
 
 ## Dependencies (npm)
 
@@ -118,8 +177,11 @@ From `package.json`:
 - `obs-websocket-js` — OBS WebSocket v5 client
 - `dotenv` — loads `.env`
 - `winston` — logging
-- `express` — dashboard + TikFinity webhook bridge HTTP server
+- `express` — dashboard + TikFinity webhook bridge + overlay web server HTTP servers
 - `proper-lockfile` — single-instance lock (see `src/reliability/singleInstanceLock.js`)
+- `ws` — WebSocket server pushing live events to the `overlays-web/` browser overlays
+- `tiktok-live-connector` — read-only TikTok LIVE event feed client used by
+  `src/tiktokDirect/tiktokListener.js` (no login required)
 
 Run `npm install` to install all of them from `package-lock.json` (committed, so versions are pinned).
 

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Stream Ending</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  html, body { background: #060503; }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.10) 0%, rgba(6, 5, 3, 0) 60%);
+  }
+  .title { font-size: 64px; text-align: center; padding: 0 40px; }
+  .subtitle { font-size: 20px; letter-spacing: 4px; text-transform: uppercase; color: #cfc6ab; }
+  .divider { width: 240px; margin: 6px 0; }
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: #d4af37;
+    opacity: 0;
+    animation-name: floatUp;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translateY(0); }
+    15% { opacity: 0.8; }
+    85% { opacity: 0.4; }
+    100% { opacity: 0; transform: translateY(-140px); }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <span class="subtitle gold-shimmer">Thank You For Watching</span>
+  <span class="title gold-shimmer">See You Next Time</span>
+  <div class="divider gold-line"></div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const stage = document.getElementById('stage');
+  for (let i = 0; i < 26; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 2 + Math.random() * 3;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.bottom = Math.random() * 30 + '%';
+    p.style.animationDuration = (5 + Math.random() * 6) + 's';
+    p.style.animationDelay = (Math.random() * 8) + 's';
+    stage.appendChild(p);
+  }
+</script>
+</body>
+</html>

@@ -88,6 +88,23 @@ button:hover { border-color: var(--gold); }
 button.active { background: var(--gold); color: #1a1408; border-color: var(--gold); }
 button.gold { border-color: var(--gold); color: var(--gold); }
 
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.form-row input, .form-row select {
+  background: #0a0806;
+  color: var(--text);
+  border: 1px solid #3a2f1c;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.form-row input[type="text"] { flex: 1; min-width: 180px; }
+.form-row input[type="number"] { width: 110px; }
+
 .volume-row {
   display: flex;
   align-items: center;

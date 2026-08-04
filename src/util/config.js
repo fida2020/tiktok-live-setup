@@ -56,6 +56,13 @@ const config = {
     host: process.env.DASHBOARD_HOST || '127.0.0.1',
     port: int('DASHBOARD_PORT', 4000),
   },
+  overlay: {
+    host: process.env.OVERLAY_HOST || '127.0.0.1',
+    port: int('OVERLAY_PORT', 4100),
+  },
+  tiktok: {
+    username: (process.env.TIKTOK_USERNAME || '').replace(/^@/, ''),
+  },
   state: {
     dir: path.join(__dirname, '..', '..', 'state'),
   },

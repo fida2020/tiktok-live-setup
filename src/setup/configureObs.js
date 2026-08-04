@@ -45,7 +45,11 @@ function buildLayerOrder(bgInputNames) {
     'Desktop Audio', 'Mic/Aux', 'MusicPlayer',
     'GiftCardImage', 'GiftAvatar', 'GiftUsernameText', 'GiftDetailText',
     'WelcomeCardImage', 'WelcomeAvatar', 'WelcomeUsernameText',
-    'MVPSceneImage', 'MVPAvatar', 'MVPUsernameText', 'MVPGiftText', 'MVPTitleText', 'MVPParticles',
+    'JoinOverlay', 'FollowOverlay', 'ShareOverlay', 'MilestoneOverlay',
+    'LeaderboardOverlay', 'GoalBarOverlay',
+    // Full-takeover moments, topmost so they cover everything else - MVP
+    // last/highest since it is the rarest and most important.
+    'BigGiftOverlay', 'BoxBattleOverlay', 'CountdownOverlay', 'BattleDropOverlay', 'MVPOverlay',
   ];
 }
 
@@ -207,6 +211,9 @@ async function ensurePlaceholderVisuals(client) {
   for (const sceneName of ['STARTING', 'BRB', 'ENDING']) {
     await addExistingSourceToScene(client, sceneName, 'BackgroundColor');
 
+    // Legacy plain-text placeholder, kept as a fallback layer (disabled) in
+    // case the browser overlay ever fails to load - see
+    // ensureStartingBrbEndingScreens for the real black-gold visual.
     const textInputName = `${sceneName}Text`;
     if (!names.includes(textInputName)) {
       await client.call('CreateInput', {
@@ -218,6 +225,42 @@ async function ensurePlaceholderVisuals(client) {
     } else {
       await addExistingSourceToScene(client, sceneName, textInputName);
     }
+    const { sceneItemId: textItemId } = await client.call('GetSceneItemId', { sceneName, sourceName: textInputName });
+    await client.call('SetSceneItemEnabled', { sceneName, sceneItemId: textItemId, sceneItemEnabled: false });
+  }
+}
+
+/**
+ * Full-screen black-gold browser-source screens for STARTING/BRB/ENDING,
+ * replacing the plain white-Arial-on-black placeholder text as the visible
+ * layer in each of those scenes.
+ */
+async function ensureStartingBrbEndingScreens(client) {
+  const PAGES = { STARTING: 'starting.html', BRB: 'brb.html', ENDING: 'ending.html' };
+  for (const [sceneName, page] of Object.entries(PAGES)) {
+    const inputName = `${sceneName}Overlay`;
+    const url = `http://${config.overlay.host}:${config.overlay.port}/${page}`;
+    const { inputs } = await client.call('GetInputList');
+    const names = inputs.map((i) => i.inputName);
+
+    // shutdown: true frees this source's CEF renderer process (~100-300MB)
+    // whenever its scene isn't the active program scene - these 3 screens
+    // are only ever visible one at a time, never alongside MAIN.
+    if (!names.includes(inputName)) {
+      await client.call('CreateInput', {
+        sceneName,
+        inputName,
+        inputKind: 'browser_source',
+        inputSettings: { url, width: 1080, height: 1920, fps: 30, reroute_audio: false, shutdown: true },
+      });
+    } else {
+      await addExistingSourceToScene(client, sceneName, inputName);
+      await client.call('SetInputSettings', { inputName, inputSettings: { url, shutdown: true } });
+    }
+
+    const { sceneItemId } = await client.call('GetSceneItemId', { sceneName, sourceName: inputName });
+    await client.call('SetSceneItemTransform', { sceneName, sceneItemId, sceneItemTransform: FULLSCREEN_TRANSFORM });
+    await client.call('SetSceneItemEnabled', { sceneName, sceneItemId, sceneItemEnabled: true });
   }
 }
 
@@ -378,15 +421,19 @@ async function ensureAvatarOverlay(client, inputName, { x, y, w, h }) {
   const names = inputs.map((i) => i.inputName);
   const placeholderUrl = `file:///${path.join(ASSETS_DIR, 'avatars', 'avatar_placeholder_1.png').replace(/\\/g, '/')}`;
 
+  // shutdown: true frees this source's CEF renderer process while its scene
+  // item is disabled (the default state - only enabled for the few seconds
+  // an alert is showing), instead of keeping ~100MB+ idle in memory always.
   if (!names.includes(inputName)) {
     await client.call('CreateInput', {
       sceneName: 'MAIN',
       inputName,
       inputKind: 'browser_source',
-      inputSettings: { url: placeholderUrl, width: w, height: h, fps: 1 },
+      inputSettings: { url: placeholderUrl, width: w, height: h, fps: 1, shutdown: true },
     });
   } else {
     await addExistingSourceToScene(client, 'MAIN', inputName);
+    await client.call('SetInputSettings', { inputName, inputSettings: { shutdown: true } });
   }
   const { sceneItemId } = await client.call('GetSceneItemId', { sceneName: 'MAIN', sourceName: inputName });
   await client.call('SetSceneItemTransform', {
@@ -394,38 +441,6 @@ async function ensureAvatarOverlay(client, inputName, { x, y, w, h }) {
     sceneItemId,
     sceneItemTransform: { boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsWidth: w, boundsHeight: h, boundsAlignment: 0, alignment: 5, positionX: x, positionY: y },
   });
-  await client.call('SetSceneItemEnabled', { sceneName: 'MAIN', sceneItemId, sceneItemEnabled: false });
-}
-
-/**
- * Creates a video-backed overlay that composites via OBS_BLEND_SCREEN (black
- * contributes nothing, so only the bright content shows, additively, over
- * whatever's beneath). Used for effects that need genuine per-frame
- * animation (particle drift, title pulse) - baked into the video at encode
- * time rather than fighting OBS's transform/bounds semantics over
- * websocket, which can only update a handful of times per second.
- */
-async function ensureScreenBlendVideo(client, inputName, fileName, { looping }) {
-  const filePath = path.join(OVERLAYS_DIR, fileName);
-  const { inputs } = await client.call('GetInputList');
-  const names = inputs.map((i) => i.inputName);
-
-  if (!names.includes(inputName)) {
-    await client.call('CreateInput', {
-      sceneName: 'MAIN',
-      inputName,
-      inputKind: 'ffmpeg_source',
-      inputSettings: { is_local_file: true, local_file: filePath, looping, restart_on_activate: true, close_when_inactive: false },
-    });
-  } else {
-    await addExistingSourceToScene(client, 'MAIN', inputName);
-    await client.call('SetInputSettings', { inputName, inputSettings: { local_file: '' } });
-    await client.call('SetInputSettings', { inputName, inputSettings: { local_file: filePath, is_local_file: true, looping } });
-  }
-
-  const { sceneItemId } = await client.call('GetSceneItemId', { sceneName: 'MAIN', sourceName: inputName });
-  await client.call('SetSceneItemTransform', { sceneName: 'MAIN', sceneItemId, sceneItemTransform: FULLSCREEN_TRANSFORM });
-  await client.call('SetSceneItemBlendMode', { sceneName: 'MAIN', sceneItemId, sceneItemBlendMode: 'OBS_BLEND_SCREEN' });
   await client.call('SetSceneItemEnabled', { sceneName: 'MAIN', sceneItemId, sceneItemEnabled: false });
 }
 
@@ -459,13 +474,16 @@ async function ensureCameraSource(client) {
 }
 
 async function ensureOverlaySources(client) {
-  // Gift alert - small banner card, upper area (native 1000x420, not stretched)
+  // Gift alert - small banner card, upper-middle area (native 1000x420, not
+  // stretched). Shifted down from the very top edge (was y=60) to leave the
+  // top-left/top-right corners clear for the Join/Follow badges added in
+  // ensureWebOverlaySources.
   await ensureImageOverlay(client, 'GiftCardImage', 'gift_alert_card.png', {
-    boundsType: 'OBS_BOUNDS_NONE', alignment: 5, positionX: 40, positionY: 60, boundsAlignment: 0,
+    boundsType: 'OBS_BOUNDS_NONE', alignment: 5, positionX: 40, positionY: 210, boundsAlignment: 0,
   });
-  await ensureAvatarOverlay(client, 'GiftAvatar', { x: 70, y: 100, w: 140, h: 140 });
-  await ensureTextOverlay(client, 'GiftUsernameText', 'Username', { size: 40, x: 230, y: 150, width: 760 });
-  await ensureTextOverlay(client, 'GiftDetailText', 'sent a gift', { size: 28, x: 230, y: 230, width: 760 });
+  await ensureAvatarOverlay(client, 'GiftAvatar', { x: 70, y: 250, w: 140, h: 140 });
+  await ensureTextOverlay(client, 'GiftUsernameText', 'Username', { size: 40, x: 230, y: 300, width: 760 });
+  await ensureTextOverlay(client, 'GiftDetailText', 'sent a gift', { size: 28, x: 230, y: 380, width: 760 });
 
   // Welcome VIP card (native 1000x600, not stretched)
   await ensureImageOverlay(client, 'WelcomeCardImage', 'welcome_card.png', {
@@ -473,14 +491,6 @@ async function ensureOverlaySources(client) {
   });
   await ensureAvatarOverlay(client, 'WelcomeAvatar', { x: (1080 - 260) / 2, y: 520, w: 260, h: 260 });
   await ensureTextOverlay(client, 'WelcomeUsernameText', 'Username', { size: 46, x: 40, y: 810, width: 1000 });
-
-  // MVP full-screen scene
-  await ensureImageOverlay(client, 'MVPSceneImage', 'mvp_scene.png');
-  await ensureAvatarOverlay(client, 'MVPAvatar', { x: (1080 - 260) / 2, y: 460, w: 260, h: 260 });
-  await ensureTextOverlay(client, 'MVPUsernameText', 'Username', { size: 48, y: 870 });
-  await ensureTextOverlay(client, 'MVPGiftText', 'Gift info', { size: 36, y: 1620 });
-  await ensureScreenBlendVideo(client, 'MVPTitleText', 'mvp_title.mp4', { looping: true });
-  await ensureScreenBlendVideo(client, 'MVPParticles', 'mvp_particles.mp4', { looping: false });
 
   // Manually-controlled music (no auto-advance; see musicController.js)
   const { inputs } = await client.call('GetInputList');
@@ -507,6 +517,58 @@ async function ensureOverlaySources(client) {
   } else {
     await addExistingSourceToScene(client, 'MAIN', 'SfxPlayer');
   }
+}
+
+/**
+ * Creates a browser_source pointed at one of the pages in overlays-web/,
+ * served by the overlay web server (src/overlays/overlayServer.js). These
+ * are the black-gold animated HTML/CSS overlays - transparent, driven live
+ * over WebSocket by overlayDispatcher.js. Positions are laid out on the
+ * 1080x1920 vertical canvas to avoid the gift-alert card and each other.
+ */
+async function ensureWebOverlaySource(client, inputName, page, { x, y, w, h }) {
+  const url = `http://${config.overlay.host}:${config.overlay.port}/${page}`;
+  const { inputs } = await client.call('GetInputList');
+  const names = inputs.map((i) => i.inputName);
+
+  if (!names.includes(inputName)) {
+    await client.call('CreateInput', {
+      sceneName: 'MAIN',
+      inputName,
+      inputKind: 'browser_source',
+      inputSettings: { url, width: w, height: h, fps: 30, reroute_audio: false },
+    });
+  } else {
+    await addExistingSourceToScene(client, 'MAIN', inputName);
+    await client.call('SetInputSettings', { inputName, inputSettings: { url, width: w, height: h } });
+  }
+
+  const { sceneItemId } = await client.call('GetSceneItemId', { sceneName: 'MAIN', sourceName: inputName });
+  await client.call('SetSceneItemTransform', {
+    sceneName: 'MAIN',
+    sceneItemId,
+    sceneItemTransform: { boundsType: 'OBS_BOUNDS_NONE', alignment: 5, positionX: x, positionY: y },
+  });
+  await client.call('SetSceneItemEnabled', { sceneName: 'MAIN', sceneItemId, sceneItemEnabled: true });
+}
+
+async function ensureWebOverlaySources(client) {
+  await ensureWebOverlaySource(client, 'JoinOverlay', 'join.html', { x: 0, y: 0, w: 520, h: 180 });
+  await ensureWebOverlaySource(client, 'FollowOverlay', 'follow.html', { x: 560, y: 0, w: 520, h: 180 });
+  await ensureWebOverlaySource(client, 'MilestoneOverlay', 'milestone.html', { x: 90, y: 650, w: 900, h: 300 });
+  // Box/Guest Battle winner and the big-gift tier are both full-takeover
+  // moments (not small corner badges), so they get the full 1080x1920 canvas.
+  await ensureWebOverlaySource(client, 'BoxBattleOverlay', 'boxbattle.html', { x: 0, y: 0, w: 1080, h: 1920 });
+  await ensureWebOverlaySource(client, 'BigGiftOverlay', 'biggift.html', { x: 0, y: 0, w: 1080, h: 1920 });
+  await ensureWebOverlaySource(client, 'ShareOverlay', 'share.html', { x: 180, y: 1360, w: 720, h: 160 });
+  await ensureWebOverlaySource(client, 'LeaderboardOverlay', 'leaderboard.html', { x: 20, y: 1560, w: 380, h: 320 });
+  await ensureWebOverlaySource(client, 'GoalBarOverlay', 'goalbar.html', { x: 680, y: 1680, w: 380, h: 200 });
+  // The MVP luxury animation is the single most important, most rare
+  // moment (whale gifts) - full-screen and must render above everything
+  // else, including BigGift/BoxBattle, so it is added (and layered) last.
+  await ensureWebOverlaySource(client, 'MVPOverlay', 'mvp.html', { x: 0, y: 0, w: 1080, h: 1920 });
+  await ensureWebOverlaySource(client, 'CountdownOverlay', 'countdown.html', { x: 0, y: 0, w: 1080, h: 1920 });
+  await ensureWebOverlaySource(client, 'BattleDropOverlay', 'battledrop.html', { x: 0, y: 0, w: 1080, h: 1920 });
 }
 
 async function ensureLayerOrder(client, backgrounds) {
@@ -546,6 +608,8 @@ async function main() {
     const backgrounds = await ensureBackgroundSources(client);
     await ensureCameraSource(client);
     await ensureOverlaySources(client);
+    await ensureWebOverlaySources(client);
+    await ensureStartingBrbEndingScreens(client);
     await ensureLayerOrder(client, backgrounds);
     await client.call('SetCurrentProgramScene', { sceneName: 'STARTING' });
 

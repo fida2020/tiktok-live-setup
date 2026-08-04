@@ -14,6 +14,10 @@ const EVENT_TYPES = Object.freeze({
   SHARE: 'share',
   GIFT: 'gift',
   JOIN: 'join',
+  MILESTONE: 'milestone',
+  LEADERBOARD: 'leaderboard',
+  GOAL: 'goal',
+  BOX_BATTLE: 'boxBattle',
 });
 
 /**

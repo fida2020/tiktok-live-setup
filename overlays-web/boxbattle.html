@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Battle Winner Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  html, body { background: transparent; }
+  .stage { overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+  .bg-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 400ms ease;
+  }
+  .bg-video.show { opacity: 1; }
+  .bg-fade {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 45%, rgba(10, 6, 3, 0.25) 20%, rgba(5, 3, 1, 0.85) 100%);
+  }
+
+  .content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    opacity: 0;
+    text-align: center;
+  }
+  .content.show { animation: popIn 650ms cubic-bezier(0.2,0.9,0.25,1) forwards; }
+  .content.fadeout { animation: fadeOut 600ms ease-in forwards; }
+
+  .trophy { font-size: 84px; filter: drop-shadow(0 0 22px rgba(212, 175, 55, 0.65)); }
+  .title { font-size: 26px; letter-spacing: 6px; text-transform: uppercase; }
+  .avatar-ring {
+    width: 240px; height: 240px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .avatar-ring img { width: 100%; height: 100%; }
+  .winner { font-size: 48px; }
+  .score { font-size: 24px; color: #cfc6ab; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <video id="bgVideo" class="bg-video" src="/video/battlewinner_crown.mp4" muted playsinline loop></video>
+  <div class="bg-fade"></div>
+  <div id="content" class="content">
+    <div class="trophy">&#127942;</div>
+    <span class="title gold-shimmer">Battle Winner</span>
+    <div class="avatar-ring"><img id="avatar" class="avatar" src="" /></div>
+    <span id="winner" class="winner username"></span>
+    <span id="score" class="score"></span>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const bgVideo = document.getElementById('bgVideo');
+  const content = document.getElementById('content');
+  const avatarEl = document.getElementById('avatar');
+  const winnerEl = document.getElementById('winner');
+  const scoreEl = document.getElementById('score');
+
+  const queue = createOverlayQueue(async (job) => {
+    avatarEl.src = job.avatarUrl || '';
+    winnerEl.textContent = job.winner;
+    scoreEl.textContent = (job.winnerScore !== undefined && job.loserScore !== undefined)
+      ? `${job.winnerScore} - ${job.loserScore}`
+      : '';
+
+    bgVideo.currentTime = 0;
+    bgVideo.play().catch(() => {});
+    bgVideo.classList.add('show');
+
+    content.classList.remove('show', 'fadeout');
+    void content.offsetWidth;
+    content.classList.add('show');
+
+    const fadeMs = 600;
+    await waitMs(Math.max(job.durationMs - fadeMs, 500));
+    content.classList.remove('show');
+    content.classList.add('fadeout');
+    bgVideo.classList.remove('show');
+    await waitMs(fadeMs);
+    content.classList.remove('fadeout');
+    bgVideo.pause();
+  });
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'boxbattle') {
+      queue.push({
+        winner: msg.winner,
+        winnerScore: msg.winnerScore,
+        loserScore: msg.loserScore,
+        avatarUrl: msg.avatarUrl,
+        durationMs: msg.durationMs || 10000,
+      });
+    }
+  });
+</script>
+</body>
+</html>

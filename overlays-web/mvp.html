@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MVP Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  html, body { background: transparent; }
+  .stage { overflow: hidden; }
+
+  .bg-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 500ms ease;
+  }
+  .bg-video.show { opacity: 1; }
+  #jetVideo { z-index: 1; }
+  #clubVideo { z-index: 2; }
+
+  .bg-tint {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: linear-gradient(180deg, rgba(5,3,1,0.35) 0%, rgba(5,3,1,0.15) 40%, rgba(5,3,1,0.55) 100%);
+  }
+
+  .flash {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    background: radial-gradient(circle at 50% 45%, rgba(255,246,214,0.95), rgba(212,175,55,0.4) 40%, transparent 72%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .flash.fire { animation: flashPop 550ms ease-out forwards; }
+  @keyframes flashPop {
+    0% { opacity: 0; transform: scale(0.4); }
+    35% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 0; transform: scale(1.6); }
+  }
+
+  .content-layer { position: absolute; inset: 0; z-index: 5; }
+
+  .club-sign {
+    position: absolute;
+    top: 14%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+  }
+  .club-sign.show { animation: neonFlicker 1400ms steps(1) forwards; }
+  .club-sign .line1 { font-size: 30px; letter-spacing: 8px; color: #d9b0c2; }
+  .club-sign .line2 {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 64px;
+    letter-spacing: 6px;
+    color: #fff6d6;
+    text-shadow: 0 0 10px #f6e6a8, 0 0 22px #d4af37, 0 0 44px #d4af37, 0 0 70px rgba(212,175,55,0.6);
+  }
+  @keyframes neonFlicker {
+    0%   { opacity: 0; }
+    8%   { opacity: 1; }
+    14%  { opacity: 0.2; }
+    20%  { opacity: 1; }
+    26%  { opacity: 0.3; }
+    32%  { opacity: 1; }
+    100% { opacity: 1; }
+  }
+
+  .welcome-text {
+    position: absolute;
+    top: 28%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 22px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0;
+  }
+  .welcome-text.show { animation: riseIn 500ms ease forwards 150ms; }
+
+  .guest {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    opacity: 0;
+    text-align: center;
+  }
+  .guest.show { animation: popIn 620ms cubic-bezier(0.2,0.9,0.25,1) forwards; }
+  .guest .avatar { width: 220px; height: 220px; }
+  .guest .mvp-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 46px;
+    letter-spacing: 6px;
+  }
+  .guest .guest-name { font-size: 40px; }
+  .guest .guest-detail { font-size: 26px; color: #f0ead6; }
+  .guest .diamond { color: #d4af37; }
+
+  .mvp-root.fadeout { animation: fadeOut 700ms ease-in forwards; }
+</style>
+</head>
+<body>
+<div class="stage mvp-root" id="root">
+  <video id="jetVideo" class="bg-video" src="/video/mvp_dragon.mp4" muted playsinline loop></video>
+  <video id="clubVideo" class="bg-video" src="/video/mvp_club_ai.mp4" muted playsinline loop></video>
+  <div class="bg-tint"></div>
+  <div class="flash" id="flash"></div>
+
+  <div class="content-layer">
+    <div class="club-sign" id="clubSign">
+      <div class="line1">P R I V A T E</div>
+      <div class="line2">VIP CLUB</div>
+    </div>
+
+    <div class="welcome-text gold-shimmer" id="welcomeText">Welcome, Our MVP</div>
+
+    <div class="guest" id="guest">
+      <img class="avatar" id="guestAvatar" src="" />
+      <div class="mvp-title gold-shimmer">MVP</div>
+      <div class="guest-name username" id="guestName"></div>
+      <div class="guest-detail" id="guestDetail"></div>
+    </div>
+  </div>
+
+  <canvas id="particles" class="particle-canvas" style="z-index: 6;"></canvas>
+</div>
+<script src="shared.js"></script>
+<script>
+  const root = document.getElementById('root');
+  const jetVideo = document.getElementById('jetVideo');
+  const clubVideo = document.getElementById('clubVideo');
+  const flash = document.getElementById('flash');
+  const clubSign = document.getElementById('clubSign');
+  const welcomeText = document.getElementById('welcomeText');
+  const guest = document.getElementById('guest');
+  const guestAvatar = document.getElementById('guestAvatar');
+  const guestName = document.getElementById('guestName');
+  const guestDetail = document.getElementById('guestDetail');
+  const particles = document.getElementById('particles');
+
+  function resetStage() {
+    root.classList.remove('fadeout');
+    jetVideo.classList.remove('show');
+    clubVideo.classList.remove('show');
+    jetVideo.pause();
+    clubVideo.pause();
+    flash.classList.remove('fire');
+    clubSign.classList.remove('show');
+    welcomeText.classList.remove('show');
+    guest.classList.remove('show');
+    root.style.visibility = 'hidden';
+  }
+
+  const queue = createOverlayQueue(async (job) => {
+    resetStage();
+    root.style.visibility = 'visible';
+    void root.offsetWidth;
+
+    // Phase 1: jet footage (0 - 2.5s)
+    jetVideo.currentTime = 0;
+    jetVideo.play().catch(() => {});
+    jetVideo.classList.add('show');
+    await waitMs(2500);
+
+    // Phase 2: flash transition into the club (2.5s - 3.1s)
+    flash.classList.add('fire');
+    clubVideo.currentTime = 0;
+    clubVideo.play().catch(() => {});
+    clubVideo.classList.add('show');
+    jetVideo.classList.remove('show');
+    await waitMs(500);
+
+    // Phase 3: neon sign (3.1s - 4.2s)
+    clubSign.classList.add('show');
+    await waitMs(1100);
+
+    // Phase 4: welcome text (4.2s - 5.5s)
+    welcomeText.classList.add('show');
+    await waitMs(1300);
+
+    // Phase 5: guest of honor takes the stage (5.5s -> hold)
+    guestAvatar.src = job.avatarUrl || '';
+    guestName.textContent = job.user;
+    guestDetail.innerHTML = job.diamondCount
+      ? `sent <strong>${job.giftName}</strong> - <span class="diamond">${job.diamondCount} ◆</span>`
+      : `sent <strong>${job.giftName}</strong>`;
+    guest.classList.add('show');
+    goldParticleBurst(particles, { count: 220, durationMs: 2600, originY: (particles.clientHeight * 0.40) });
+
+    const elapsed = 2500 + 500 + 1100 + 1300;
+    const fadeMs = 700;
+    const holdMs = Math.max(job.durationMs - elapsed - fadeMs, 800);
+    await waitMs(holdMs);
+
+    root.classList.add('fadeout');
+    await waitMs(fadeMs);
+    resetStage();
+  });
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'mvp') {
+      queue.push({
+        user: msg.user || 'Someone',
+        giftName: msg.giftName || 'a gift',
+        diamondCount: msg.diamondCount,
+        avatarUrl: msg.avatarUrl,
+        durationMs: msg.durationMs || 10000,
+      });
+    }
+  });
+</script>
+</body>
+</html>

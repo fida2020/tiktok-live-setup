@@ -3,13 +3,19 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 const { childLogger } = require('../util/logger');
+const { config } = require('../util/config');
+const vipList = require('./vipList');
 
 const log = childLogger('overlays');
 
 const CONFIG_PATH = path.join(__dirname, '..', '..', 'config', 'vipConfig.json');
 const AVATARS_DIR = path.join(__dirname, '..', '..', 'assets', 'avatars');
 const SOUNDS_DIR = path.join(__dirname, '..', '..', 'assets', 'sounds');
-const DEFAULT_AVATAR_URL = `file:///${path.join(AVATARS_DIR, 'avatar_placeholder_1.png').replace(/\\/g, '/')}`;
+// http (not file://): this same URL is also used as an <img src> inside the
+// http-served overlays-web pages (mvp.html/biggift.html/boxbattle.html),
+// which Chromium blocks from loading file:// resources. Served by
+// overlayServer's /avatars static route.
+const DEFAULT_AVATAR_URL = `http://${config.overlay.host}:${config.overlay.port}/avatars/avatar_placeholder_1.png`;
 const AVATAR_CHECK_TIMEOUT_MS = 2500;
 
 function loadVipConfig() {
@@ -17,7 +23,19 @@ function loadVipConfig() {
     return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   } catch (err) {
     log.error('Could not load config/vipConfig.json, using built-in defaults', { error: err.message });
-    return { gift: { alertDurationMs: 5000 }, mvp: { minDiamondValue: 500, durationMs: 10000 }, welcome: { minLevel: 20, durationMs: 6000 } };
+    return {
+      gift: { smallDurationMs: 3000 },
+      bigGift: { minDiamondValue: 2999, durationMs: 3000 },
+      mvp: { minDiamondValue: 9999, durationMs: 10000 },
+      battleWinner: { durationMs: 10000 },
+      welcome: { durationMs: 6000 },
+      join: { durationMs: 4000 },
+      follow: { durationMs: 4000 },
+      share: { durationMs: 4500 },
+      milestone: { likeThresholds: [], viewerThresholds: [], durationMs: 6000 },
+      boxBattle: { durationMs: 8000 },
+      leaderboard: { updateThrottleMs: 4000 },
+    };
   }
 }
 
@@ -93,13 +111,8 @@ async function playSfx(obs, fileName) {
   await obs.call('TriggerMediaInputAction', { inputName: 'SfxPlayer', mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART' });
 }
 
-async function restartMedia(obs, inputName) {
-  await obs.call('TriggerMediaInputAction', { inputName, mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART' });
-}
-
 const GIFT_SOURCES = ['GiftCardImage', 'GiftAvatar', 'GiftUsernameText', 'GiftDetailText'];
 const WELCOME_SOURCES = ['WelcomeCardImage', 'WelcomeAvatar', 'WelcomeUsernameText'];
-const MVP_SOURCES = ['MVPSceneImage', 'MVPAvatar', 'MVPUsernameText', 'MVPGiftText', 'MVPTitleText', 'MVPParticles'];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -118,7 +131,7 @@ async function showGiftAlert(obs, payload) {
   await playSfx(obs, 'gift_alert.mp3').catch((err) => log.warn('Gift sfx failed', { error: err.message }));
 
   await setGroupEnabled(obs, GIFT_SOURCES, true);
-  await sleep(vipConfig.gift.alertDurationMs);
+  await sleep(vipConfig.gift.smallDurationMs);
   await setGroupEnabled(obs, GIFT_SOURCES, false);
 }
 
@@ -137,42 +150,18 @@ async function showWelcome(obs, payload) {
 }
 
 /**
- * Full-screen MVP/big-gifter presentation. Only ever touches MVP_SOURCES -
- * never the background layer - so BG_<theme> keeps playing underneath,
- * untouched, for the whole sequence (see backgroundController.js / the
- * always-on background layer design).
+ * Which of the 3 gift tiers a diamondCount falls into - see the _comment in
+ * config/vipConfig.json for what each tier shows.
  */
-async function showMVP(obs, payload) {
-  const username = payload.user || 'Someone';
-  const giftName = payload.giftName || 'a gift';
-  const diamondCount = payload.diamondCount || '';
-
-  log.info(`Showing MVP presentation for ${username}`, { giftName, diamondCount });
-  const avatarUrl = await resolveAvatarUrl(payload);
-  await setText(obs, 'MVPUsernameText', username);
-  await setText(obs, 'MVPGiftText', diamondCount ? `${giftName} - ${diamondCount} diamonds` : giftName);
-  await setAvatar(obs, 'MVPAvatar', avatarUrl);
-  await playSfx(obs, 'mvp_fanfare.mp3').catch((err) => log.warn('MVP sfx failed', { error: err.message }));
-
-  await setGroupEnabled(obs, MVP_SOURCES, true);
-  // Force the title/particle videos to play from frame 0 every time, rather
-  // than resuming wherever they happened to be left (e.g. mid-pulse) from a
-  // previous trigger.
-  await restartMedia(obs, 'MVPTitleText').catch(() => {});
-  await restartMedia(obs, 'MVPParticles').catch(() => {});
-
-  await sleep(vipConfig.mvp.durationMs);
-  await setGroupEnabled(obs, MVP_SOURCES, false);
-}
-
-function qualifiesForMvp(payload) {
+function getGiftTier(payload) {
   const value = Number(payload.diamondCount) || 0;
-  return value >= vipConfig.mvp.minDiamondValue;
+  if (value >= vipConfig.mvp.minDiamondValue) return 'mvp';
+  if (value >= vipConfig.bigGift.minDiamondValue) return 'bigGift';
+  return 'small';
 }
 
 function qualifiesForWelcome(payload) {
-  if (payload.level === undefined || payload.level === null) return false;
-  return Number(payload.level) >= vipConfig.welcome.minLevel;
+  return vipList.isVip(payload.user);
 }
 
 function getVipConfig() {
@@ -182,11 +171,10 @@ function getVipConfig() {
 module.exports = {
   showGiftAlert,
   showWelcome,
-  showMVP,
-  qualifiesForMvp,
+  getGiftTier,
   qualifiesForWelcome,
+  resolveAvatarUrl,
   getVipConfig,
   GIFT_SOURCES,
   WELCOME_SOURCES,
-  MVP_SOURCES,
 };

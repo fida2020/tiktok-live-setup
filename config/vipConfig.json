@@ -1,16 +1,44 @@
 {
-  "_comment": "Tune thresholds/durations here - no code changes needed.",
+  "_comment": "Tune thresholds/durations here - no code changes needed. Gifts fall into one of 3 tiers by diamondCount: small (< bigGift.minDiamondValue) shows the small OBS gift card, bigGift (>= its minDiamondValue, < mvp.minDiamondValue) shows the big-gift browser overlay, mvp (>= its minDiamondValue) shows the full-screen luxury MVP overlay.",
   "gift": {
-    "alertDurationMs": 5000
+    "smallDurationMs": 3000
+  },
+  "bigGift": {
+    "minDiamondValue": 2999,
+    "durationMs": 3000
   },
   "mvp": {
-    "_comment": "A gift qualifies for the full MVP treatment when its diamond value is >= minDiamondValue.",
-    "minDiamondValue": 500,
+    "_comment": "The full-screen luxury (private jet / VIP club) celebration for whale gifts.",
+    "minDiamondValue": 9999,
+    "durationMs": 10000
+  },
+  "battleWinner": {
+    "_comment": "Full-screen celebration when a Box/Guest Battle winner is announced from the dashboard. The winner is also auto-added to vipList.json.",
     "durationMs": 10000
   },
   "welcome": {
-    "_comment": "TikFinity does not currently expose a documented viewer-level/tier field for join events (see README limitation notes). This threshold is here and wired end-to-end for when/if that data becomes available; minLevel is compared against payload.level if present.",
-    "minLevel": 20,
+    "_comment": "The special VIP banner shows for anyone whose username is listed in config/vipList.json.",
     "durationMs": 6000
+  },
+  "join": {
+    "durationMs": 4000
+  },
+  "follow": {
+    "durationMs": 4000
+  },
+  "share": {
+    "durationMs": 4500
+  },
+  "milestone": {
+    "_comment": "Fires once per threshold per stream session (resets when the tiktok-listener process restarts). Edit these numbers to match your channel size.",
+    "likeThresholds": [1000, 5000, 10000, 50000, 100000, 500000],
+    "viewerThresholds": [10, 25, 50, 100, 250, 500, 1000],
+    "durationMs": 6000
+  },
+  "boxBattle": {
+    "durationMs": 8000
+  },
+  "leaderboard": {
+    "updateThrottleMs": 4000
   }
 }

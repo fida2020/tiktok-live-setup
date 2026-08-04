@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Goal Bar Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage { display: flex; align-items: flex-end; justify-content: flex-end; padding: 10px; }
+  .panel { width: 100%; padding: 14px 16px; }
+  .label { font-size: 13px; letter-spacing: 1px; margin-bottom: 8px; display: block; color: #f0ead6; }
+  .track {
+    width: 100%;
+    height: 14px;
+    border-radius: 999px;
+    background: #0a0806;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #7a5c1e, #d4af37, #fff6d6);
+    transition: width 600ms ease;
+  }
+  .numbers { margin-top: 6px; font-size: 12px; color: #cfc6ab; text-align: right; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="panel card">
+    <span id="label" class="label gold-shimmer">Goal</span>
+    <div class="track"><div id="fill" class="fill"></div></div>
+    <div id="numbers" class="numbers">0 / 0</div>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const labelEl = document.getElementById('label');
+  const fillEl = document.getElementById('fill');
+  const numbersEl = document.getElementById('numbers');
+
+  let goal = { metric: 'diamonds', target: 1000, label: 'Goal' };
+  let current = 0;
+
+  function render() {
+    labelEl.textContent = goal.label;
+    const pct = goal.target > 0 ? Math.min(100, (current / goal.target) * 100) : 0;
+    fillEl.style.width = pct + '%';
+    numbersEl.textContent = `${Number(current).toLocaleString()} / ${Number(goal.target).toLocaleString()}`;
+  }
+  render();
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'goal-config') {
+      goal = { metric: msg.metric, target: msg.target, label: msg.label };
+      render();
+    } else if (msg.type === 'goal-progress') {
+      current = goal.metric === 'likes' ? (msg.likeTotal || 0) : (msg.diamondTotal || 0);
+      render();
+    }
+  });
+</script>
+</body>
+</html>

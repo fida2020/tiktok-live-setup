@@ -8,14 +8,17 @@
   "scripts": {
     "start": "node src/index.js",
     "setup:obs": "node src/setup/configureObs.js",
-    "test": "node src/test/runSmokeTests.js"
+    "test": "node src/test/runSmokeTests.js",
+    "tiktok-listener": "node src/tiktokDirect/tiktokListener.js"
   },
   "dependencies": {
     "obs-websocket-js": "^5.0.6",
     "dotenv": "^16.4.5",
     "winston": "^3.13.0",
     "express": "^4.19.2",
-    "proper-lockfile": "^4.1.2"
+    "proper-lockfile": "^4.1.2",
+    "ws": "^8.21.2",
+    "tiktok-live-connector": "^2.4.3"
   },
   "engines": {
     "node": ">=18.0.0"

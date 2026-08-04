@@ -1,15 +1,15 @@
 {
-  "_comment": "Maps normalized TikFinity events to OBS actions. Edit freely - no code changes needed. Each rule: eventType + optional minValue (checked against payload.diamondCount for gifts / payload.count for likes) + action.",
+  "_comment": "Maps normalized events to simple OBS actions (logOnly/switchScene/showSource/hideSource) for anything that doesn't need the richer queued/timed treatment. Gift/Join/Follow/Share/Milestone/Leaderboard/Goal/BoxBattle are actually handled in code by src/overlays/overlayDispatcher.js (real visuals, timing, queueing) - these rules just log them too, and are the extension point if you ever want to bolt on an extra simple OBS action (e.g. switchScene) alongside the built-in visual.",
   "rules": [
     {
       "eventType": "gift",
       "minValue": 1,
       "valueField": "diamondCount",
-      "action": { "kind": "logOnly", "note": "Gift received - replace with e.g. showSource for an alert overlay once one exists in the MAIN scene" }
+      "action": { "kind": "logOnly", "note": "Gift received - real alert/MVP visual handled by overlayDispatcher.js" }
     },
     {
       "eventType": "follow",
-      "action": { "kind": "logOnly", "note": "New follower - hook up a thank-you overlay source here later" }
+      "action": { "kind": "logOnly", "note": "Real Follow badge handled by overlayDispatcher.js (source: direct TikTok listener)" }
     },
     {
       "eventType": "comment",
@@ -21,7 +21,15 @@
     },
     {
       "eventType": "share",
-      "action": { "kind": "logOnly" }
+      "action": { "kind": "logOnly", "note": "Real Share badge handled by overlayDispatcher.js (source: direct TikTok listener)" }
+    },
+    {
+      "eventType": "join",
+      "action": { "kind": "logOnly", "note": "Real Join badge + VIP welcome handled by overlayDispatcher.js (source: direct TikTok listener)" }
+    },
+    {
+      "eventType": "milestone",
+      "action": { "kind": "logOnly", "note": "Real Milestone banner handled by overlayDispatcher.js (source: direct TikTok listener)" }
     }
   ]
 }

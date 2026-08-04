@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Battle Drop Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  html, body { background: transparent; }
+  .stage { overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 300ms ease;
+    background: radial-gradient(ellipse at 50% 45%, rgba(120, 20, 20, 0.35), transparent 60%),
+      linear-gradient(180deg, rgba(5,3,1,0.6) 0%, rgba(5,3,1,0.85) 100%);
+  }
+  .backdrop.show { opacity: 1; }
+
+  .content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    opacity: 0;
+    text-align: center;
+  }
+  .content.show { animation: dropPop 550ms cubic-bezier(0.3,0.1,0.3,1) forwards; }
+  .content.fadeout { animation: dropFall 500ms ease-in forwards; }
+  @keyframes dropPop {
+    0% { opacity: 0; transform: scale(1.1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes dropFall {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(60px) rotate(-8deg); }
+  }
+
+  .avatar-wrap { position: relative; width: 200px; height: 200px; }
+  .avatar-wrap img {
+    width: 100%; height: 100%; border-radius: 50%;
+    border: 3px solid #7a2020; object-fit: cover; filter: grayscale(0.6) brightness(0.75);
+  }
+  .cross {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 96px; color: rgba(200, 40, 40, 0.85);
+    text-shadow: 0 0 18px rgba(200, 40, 40, 0.6);
+  }
+  .label { font-size: 26px; letter-spacing: 6px; text-transform: uppercase; color: #c96a6a; }
+  .name { font-size: 40px; }
+  .points { font-size: 22px; color: #cfc6ab; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="backdrop" id="backdrop"></div>
+  <div id="content" class="content">
+    <div class="avatar-wrap">
+      <img id="avatar" src="" />
+      <div class="cross">&#10006;</div>
+    </div>
+    <span class="label">Eliminated</span>
+    <span id="name" class="name username"></span>
+    <span id="points" class="points"></span>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const backdrop = document.getElementById('backdrop');
+  const content = document.getElementById('content');
+  const avatarEl = document.getElementById('avatar');
+  const nameEl = document.getElementById('name');
+  const pointsEl = document.getElementById('points');
+
+  const queue = createOverlayQueue(async (job) => {
+    avatarEl.src = job.avatarUrl || '';
+    nameEl.textContent = job.name;
+    pointsEl.textContent = `${job.points} pts`;
+
+    backdrop.classList.add('show');
+    content.classList.remove('show', 'fadeout');
+    void content.offsetWidth;
+    content.classList.add('show');
+
+    const fadeMs = 500;
+    await waitMs(Math.max((job.durationMs || 4000) - fadeMs, 400));
+    content.classList.remove('show');
+    content.classList.add('fadeout');
+    backdrop.classList.remove('show');
+    await waitMs(fadeMs);
+    content.classList.remove('fadeout');
+  });
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'battle-drop') {
+      queue.push({
+        name: msg.name || 'Guest',
+        avatarUrl: msg.avatarUrl,
+        points: msg.points,
+        durationMs: msg.durationMs || 4000,
+      });
+    }
+  });
+</script>
+</body>
+</html>

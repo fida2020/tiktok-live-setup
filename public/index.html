@@ -59,21 +59,82 @@
     <h2>VIP / Alert Test Triggers</h2>
     <p class="hint">These always show, regardless of thresholds - use them to QA the visual templates.</p>
     <div class="button-row">
-      <button data-trigger="gift">Test Gift Alert</button>
+      <button data-trigger="gift">Test Small Gift Alert</button>
       <button data-trigger="welcome">Test VIP Welcome</button>
+      <button data-trigger="biggift" class="gold">Test Big Gift Animation</button>
       <button data-trigger="mvp" class="gold">Test MVP Animation</button>
     </div>
   </section>
 
   <section class="card">
-    <h2>Test Mode (simulated TikFinity events)</h2>
-    <p class="hint">These go through the real qualification logic (MVP diamond threshold, welcome level threshold) - no TikTok LIVE required.</p>
+    <h2>Test Mode (simulated events)</h2>
+    <p class="hint">These go through the real qualification logic (MVP diamond threshold, VIP list membership) - no TikTok LIVE required. To see "Simulate VIP Join" show the welcome banner, first add <code>fake_vip_test</code> to <code>config/vipList.json</code>.</p>
     <div class="button-row">
-      <button data-sim="normal-gift">Simulate Normal Gift</button>
-      <button data-sim="mvp-gift" class="gold">Simulate Big/MVP Gift</button>
-      <button data-sim="vip-join" class="gold">Simulate High-Level Join</button>
+      <button data-sim="normal-gift">Simulate Small Gift</button>
+      <button data-sim="big-gift" class="gold">Simulate Big Gift (2999+)</button>
+      <button data-sim="mvp-gift" class="gold">Simulate MVP Gift (9999+)</button>
+      <button data-sim="vip-join" class="gold">Simulate VIP Join</button>
       <button data-sim="non-qualifying-join">Simulate Regular Join (should NOT show welcome)</button>
+      <button data-sim="follow">Simulate Follow</button>
+      <button data-sim="share">Simulate Share</button>
+      <button data-sim="leaderboard">Simulate Leaderboard Update</button>
     </div>
+    <div class="button-row">
+      <button id="simMilestoneLike">Simulate Like Milestone</button>
+      <button id="simMilestoneViewer">Simulate Viewer Milestone</button>
+      <button data-sim="battle-winner" class="gold">Simulate Battle Winner</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Battle Final Countdown</h2>
+    <p class="hint">Enter each guest with their current points, pick a mode, then start the 10s countdown. <strong>All-at-once</strong>: everyone counted together, highest points wins outright. <strong>Elimination</strong>: lowest points drops each round (with a distinct "Eliminated" animation) - run it again for the remaining guests until 2 are left, and that final round also announces the winner automatically.</p>
+    <div class="form-row">
+      <select id="battleMode">
+        <option value="allatonce">All-at-once (highest points wins)</option>
+        <option value="elimination">Elimination (lowest points drops each round)</option>
+      </select>
+    </div>
+    <div id="guestRows"></div>
+    <div class="button-row">
+      <button id="addGuestBtn">+ Add Guest</button>
+      <button id="resetGuestsBtn">Reset</button>
+      <button id="startCountdownBtn" class="gold">Start 10s Countdown</button>
+    </div>
+    <p class="hint" id="battleStatus"></p>
+  </section>
+
+  <section class="card">
+    <h2>Box / Guest Battle Winner (manual trigger - real, used live)</h2>
+    <p class="hint">TikTok LIVE doesn't expose a reliable automatic box-battle-result event anywhere yet, so trigger this yourself the moment you see the result on your own screen. Shows a full-screen 10s celebration with their photo and name, and automatically adds them to <code>config/vipList.json</code> so they get the VIP welcome banner if they join again.</p>
+    <div class="form-row">
+      <input type="text" id="bbWinner" placeholder="Winner's TikTok username" />
+      <input type="text" id="bbAvatarUrl" placeholder="Winner's photo URL (optional)" />
+      <input type="number" id="bbWinnerScore" placeholder="Winner score" />
+      <input type="number" id="bbLoserScore" placeholder="Loser score" />
+      <button id="bbSubmit" class="gold">Announce Battle Winner</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Stream Goal Bar</h2>
+    <p class="hint">Set this before you go live. Progress is tracked by the direct TikTok listener process and resets each time that process restarts.</p>
+    <div class="form-row">
+      <select id="goalMetric">
+        <option value="diamonds">Diamonds (gifts)</option>
+        <option value="likes">Likes</option>
+      </select>
+      <input type="number" id="goalTarget" placeholder="Target amount" />
+      <input type="text" id="goalLabel" placeholder="Label shown on overlay (e.g. Road to 5,000 Diamonds)" />
+      <button id="goalSubmit" class="gold">Set Goal</button>
+    </div>
+    <p class="hint">Current goal: <span id="currentGoal">-</span></p>
+  </section>
+
+  <section class="card">
+    <h2>Overlay Browser Source URLs</h2>
+    <p class="hint">Add each of these as an OBS Browser Source (see setup instructions). All are transparent, 1080x1920 canvas-relative.</p>
+    <pre id="overlayUrls" class="log-view"></pre>
   </section>
 
   <section class="card">

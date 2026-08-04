@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Milestone Overlay</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .stage { display: flex; align-items: center; justify-content: center; }
+  .banner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 28px 50px;
+    text-align: center;
+  }
+  .value { font-size: 56px; line-height: 1.1; }
+  .label { font-size: 18px; letter-spacing: 2px; text-transform: uppercase; color: #f0ead6; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <canvas id="particles" class="particle-canvas"></canvas>
+  <div id="banner" class="banner card" style="visibility: hidden;">
+    <span id="value" class="value gold-shimmer">0</span>
+    <span id="label" class="label"></span>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script>
+  const banner = document.getElementById('banner');
+  const valueEl = document.getElementById('value');
+  const labelEl = document.getElementById('label');
+  const canvas = document.getElementById('particles');
+
+  const LABELS = { like: 'Likes Reached', viewer: 'Viewers Watching' };
+
+  const queue = createOverlayQueue(async (job) => {
+    valueEl.textContent = Number(job.value).toLocaleString();
+    labelEl.textContent = LABELS[job.kind] || 'Milestone Reached';
+    banner.style.setProperty('--hold-ms', job.durationMs + 'ms');
+    banner.style.visibility = 'visible';
+    banner.classList.remove('entrance-pop');
+    void banner.offsetWidth;
+    banner.classList.add('entrance-pop');
+    goldParticleBurst(canvas, { count: 90, durationMs: 1600 });
+    await waitMs(job.durationMs);
+    banner.style.visibility = 'hidden';
+  });
+
+  connectOverlayWs((msg) => {
+    if (msg.type === 'milestone') {
+      queue.push({ kind: msg.kind, value: msg.value, durationMs: msg.durationMs || 6000 });
+    }
+  });
+</script>
+</body>
+</html>
