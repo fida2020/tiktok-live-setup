@@ -135,6 +135,12 @@ Browser Sources.
 
 ## Installation order on a fresh Windows VPS
 
+`vps-setup/Restore-StreamingStack.ps1` automates steps 7-8 below (clone + `npm install` +
+restore the `obs/` profile/scene backup), plus a best-effort restore of obs-websocket's
+config, Streamer.bot, TikFinity, and media files from an external backup folder if you
+point it at one (`-BackupRoot`). It cannot perform the interactive/GUI-only steps (1, 4-6,
+9-15) — see its header comment and [Manual steps](#manual-steps-on-the-new-vps) below.
+
 1. **Provision the VPS** with a virtual display driver if it's headless/RDP-only (Parsec VDD or
    equivalent — see `vps-setup/Set-SkyRigDisplay.ps1` for one way to force it primary and detach
    the fallback "Microsoft Basic Display"/VGX adapter; `vps-setup/Verify-SkyRigDisplay.ps1` is a

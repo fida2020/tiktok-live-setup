@@ -19,6 +19,11 @@ from `%APPDATA%\obs-studio\basic\`. Secrets have been stripped — see below.
 
 ## Restoring on a fresh Windows VPS
 
+Steps 2-3 below (and a best-effort restore of Streamer.bot/TikFinity settings and media
+files from an external backup folder) can be automated with
+`vps-setup/Restore-StreamingStack.ps1` — see its header comment for usage. It cannot
+install OBS itself or log into TikTok/TikFinity for you, so steps 1, 4-8 are still manual.
+
 1. Install OBS Studio (same major version if possible — see root README).
 2. Copy `profiles/TikTokLive/` to `%APPDATA%\obs-studio\basic\profiles\TikTokLive\`.
 3. Copy `scenes/TikTokLive.json` to `%APPDATA%\obs-studio\basic\scenes\TikTokLive.json`.
