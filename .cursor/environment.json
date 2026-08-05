@@ -4,8 +4,13 @@
   "terminals": [
     {
       "name": "overlay-server",
-      "command": "node -e \"require('./src/overlays/overlayServer').startOverlayServer()\""
+      "command": "node -e \"require('./src/overlays/overlayServer').startOverlayServer()\"",
+      "description": "Hosts the animated black-gold OBS Browser Source overlays (overlays-web/) and their WebSocket endpoint on http://127.0.0.1:4100 for live overlay development and preview. The full npm start controller is not run here because it requires external Windows-only apps (OBS Studio, TikTok LIVE Studio, TikFinity)."
     }
   ],
-  "ports": [4000, 4100, 3939]
+  "ports": [
+    { "name": "control dashboard", "port": 4000 },
+    { "name": "overlay server", "port": 4100 },
+    { "name": "tikfinity bridge", "port": 3939 }
+  ]
 }
