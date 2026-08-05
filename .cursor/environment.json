@@ -1,0 +1,11 @@
+{
+  "name": "TikTok LIVE Automation Controller",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "overlay-server",
+      "command": "node -e \"require('./src/overlays/overlayServer').startOverlayServer()\""
+    }
+  ],
+  "ports": [4000, 4100, 3939]
+}
