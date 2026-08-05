@@ -57,13 +57,6 @@ async function main() {
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-  const obsReady = await obsProcessManager.ensureRunning();
-  if (!obsReady) {
-    log.error('Could not start OBS. Aborting.');
-    await releaseLock();
-    process.exit(1);
-  }
-
   const obsClient = new ObsClient();
   shutdownHooks.push(() => obsClient.disconnect());
 
@@ -85,13 +78,6 @@ async function main() {
       log.error('Failed to re-assert scene/background/camera state after (re)connect', { error: err.message });
     }
   });
-
-  const connected = await connectWithRetry(obsClient);
-  if (!connected) {
-    log.error('Could not connect to OBS WebSocket within timeout. Aborting.');
-    await releaseLock();
-    process.exit(1);
-  }
 
   const stopHealthMonitor = startHealthMonitor(obsClient, {
     onObsRelaunched: async () => {
@@ -132,8 +118,30 @@ async function main() {
     log.warn('No background videos found in backgrounds/ - add one and run "npm run setup:obs" to register it');
   }
 
+  // Dashboard/overlay/webhook servers above are already listening at this point,
+  // regardless of whether OBS is up yet - this line used to come after a blocking,
+  // hard-exit-on-failure OBS launch+connect sequence, which meant the dashboard
+  // was completely unreachable (and the whole process could exit) if OBS was slow
+  // to start or misconfigured. Launching/connecting to OBS now happens in the
+  // background below: failures are logged, not fatal, and ObsClient's own
+  // reconnect loop plus the health monitor's relaunch-on-disappear logic keep
+  // retrying indefinitely - check http://.../api/status to see live OBS state.
   log.info('Controller is up and running.', {
     dashboard: `http://${config.dashboard.host}:${config.dashboard.port}`,
+  });
+
+  (async () => {
+    const obsReady = await obsProcessManager.ensureRunning();
+    if (!obsReady) {
+      log.error('OBS did not launch within OBS_LAUNCH_TIMEOUT_MS. Check OBS_INSTALL_DIR in .env and that OBS Studio is actually installed there. The health monitor will keep retrying automatically; the dashboard stays available in the meantime.');
+      return;
+    }
+    const connected = await connectWithRetry(obsClient);
+    if (!connected) {
+      log.error('Could not connect to OBS WebSocket within OBS_LAUNCH_TIMEOUT_MS. Check OBS_WS_HOST/OBS_WS_PORT/OBS_WS_PASSWORD in .env against OBS -> Tools -> WebSocket Server Settings. ObsClient will keep retrying automatically in the background.');
+    }
+  })().catch((err) => {
+    log.error('Background OBS startup task failed unexpectedly', { error: err.message, stack: err.stack });
   });
 }
 

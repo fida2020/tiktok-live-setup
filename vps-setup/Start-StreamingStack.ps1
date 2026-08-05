@@ -6,9 +6,16 @@
 #
 # Usage: right-click -> Run with PowerShell, or double-click the
 # "Start TikTok Streaming Stack" shortcut on the Desktop.
+#   .\Start-StreamingStack.ps1
+#   .\Start-StreamingStack.ps1 -RepoDir "C:\path\to\tiktok-live-setup"
+
+[CmdletBinding()]
+param(
+    [string]$RepoDir = "C:\Users\Administrator\tiktok-live-setup"
+)
 
 $ErrorActionPreference = 'Continue'
-$repoDir = "C:\Users\Administrator\Projects\tiktok-live-setup"
+$repoDir = $RepoDir
 
 function Start-IfNotRunning($processName, $action, $label) {
     if (Get-Process -Name $processName -ErrorAction SilentlyContinue) {

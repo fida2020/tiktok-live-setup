@@ -59,6 +59,16 @@ function launch() {
     ],
     { cwd, detached: true, stdio: 'ignore' },
   );
+  // Without this handler, a failed spawn (e.g. OBS_INSTALL_DIR pointing at a
+  // path where OBS isn't actually installed - very easy to hit on a fresh
+  // VPS before OBS is set up) emits an unhandled 'error' event on `child`,
+  // which crashes this ENTIRE process with no useful log line. That used to
+  // silently kill the dashboard/overlay/webhook servers too. Log it via our
+  // own logger instead and let ensureRunning()'s polling loop time out and
+  // report failure normally.
+  child.on('error', (err) => {
+    log.error('Failed to launch OBS process', { exePath, error: err.message, code: err.code });
+  });
   child.unref();
   return child;
 }
