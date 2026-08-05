@@ -135,11 +135,37 @@ Browser Sources.
 
 ## Installation order on a fresh Windows VPS
 
-`vps-setup/Restore-StreamingStack.ps1` automates steps 7-8 below (clone + `npm install` +
-restore the `obs/` profile/scene backup), plus a best-effort restore of obs-websocket's
-config, Streamer.bot, TikFinity, and media files from an external backup folder if you
-point it at one (`-BackupRoot`). It cannot perform the interactive/GUI-only steps (1, 4-6,
-9-15) — see its header comment and [Manual steps](#manual-steps-on-the-new-vps) below.
+### Automated quick start
+
+Three scripts in `vps-setup/` cover as much of the sequence below as can be scripted
+(none of them can complete the interactive/GUI-only steps — logins, stream key, WebSocket
+password, wiring — those are still yours to do; each script prints exactly what's left).
+Run them **in this order**, from an elevated (Administrator) PowerShell prompt:
+
+1. `Setup-Prerequisites.ps1` — installs Git, Node.js, and OBS Studio silently via `winget`;
+   opens the official download pages for VB-Audio Virtual Cable, TikTok LIVE Studio,
+   TikFinity, and Streamer.bot (these need an interactive installer and/or a TikTok login,
+   so they can't be scripted — see the file's header comment for why).
+2. `Restore-StreamingStack.ps1 [-BackupRoot <path>]` — clones this repo, runs
+   `npm install`, restores the OBS `TikTokLive` profile/scene collection from this repo's
+   own `obs/` backup, and best-effort restores obs-websocket's config, Streamer.bot data,
+   TikFinity settings, and media files from an external backup folder if you point one at
+   it (defaults to `C:\Users\Administrator\Streaming_Backup_2026-08-05` — pass your real
+   path if different).
+3. `Start-StreamingStack.ps1` — launches OBS, Streamer.bot, TikFinity, TikTok LIVE Studio,
+   the Node controller (`npm start`), and the direct TikTok listener
+   (`npm run tiktok-listener`), skipping anything already running.
+4. `Test-StreamingStack.ps1` — end-to-end verification: checks every required
+   process/port is up, confirms the controller sees OBS connected, fires every TEST MODE
+   event through the real dashboard API (gift/big-gift/MVP/follow/share/join/milestone/
+   leaderboard) so you can visually confirm each overlay in OBS's Preview, and tails the
+   error/crash logs. Prints a final list of only the steps that genuinely need you (visual
+   confirmation, mic/audio check, TikTok/TikFinity login, stream key, a real test gift).
+
+Each script's own header comment documents exactly what it does and does not cover; read
+it before running. They're all safe to re-run.
+
+### Manual walkthrough (what the scripts above automate step-by-step)
 
 1. **Provision the VPS** with a virtual display driver if it's headless/RDP-only (Parsec VDD or
    equivalent — see `vps-setup/Set-SkyRigDisplay.ps1` for one way to force it primary and detach
