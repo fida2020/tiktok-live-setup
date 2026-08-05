@@ -27,7 +27,7 @@
 [CmdletBinding()]
 param(
     [string]$RepoUrl = "https://github.com/fida2020/tiktok-live-setup.git",
-    [string]$RepoDir = "C:\TikTokLiveAutomation",
+    [string]$RepoDir = "C:\Users\Administrator\tiktok-live-setup",
     [string]$BackupRoot = "C:\Users\Administrator\Streaming_Backup_2026-08-05",
     [string]$StreamerBotDir = "C:\Streamerbot",
     [string]$TikFinityAppData = "$env:LOCALAPPDATA\tikfinity"

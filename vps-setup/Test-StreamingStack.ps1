@@ -27,7 +27,7 @@ param(
     [int]$ObsWsPort = 4455,
     [int]$OverlayPort = 4100,
     [int]$TikfinityBridgePort = 3939,
-    [string]$RepoDir = "C:\TikTokLiveAutomation"
+    [string]$RepoDir = "C:\Users\Administrator\tiktok-live-setup"
 )
 
 $ErrorActionPreference = "Continue"
