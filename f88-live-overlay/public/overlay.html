@@ -308,18 +308,6 @@
     pointer-events:none;
   }
   @keyframes spinSlow{ to{ transform:translateX(-50%) rotate(360deg); } }
-  .halo-glow{
-    position:absolute; top:26px; left:50%; transform:translateX(-50%);
-    width:190px; height:190px; border-radius:50%;
-    background:radial-gradient(circle, rgba(255,210,76,.35), transparent 68%);
-    filter:blur(3px);
-    animation:auraPulse 2.4s ease-in-out infinite;
-    pointer-events:none;
-  }
-  @keyframes auraPulse{
-    0%,100%{opacity:.8; transform:translateX(-50%) scale(1);}
-    50%{opacity:1; transform:translateX(-50%) scale(1.06);}
-  }
   .leader-crown{
     font-size:26px; filter:drop-shadow(0 0 14px rgba(255,210,76,.9));
     animation:crownFloat 2.2s ease-in-out infinite;
@@ -779,7 +767,6 @@
 
         <div class="leader-zone" id="leaderZone">
           <div class="sunburst"></div>
-          <div class="halo-glow"></div>
         </div>
 
         <div class="side-panel side-panel-stacked">
@@ -1193,7 +1180,7 @@ function render(){
   document.getElementById("titleMain").textContent = `${guests.length} GUEST BATTLE ARENA`;
 
   const leaderZone = document.getElementById("leaderZone");
-  const bg = `<div class="sunburst"></div><div class="halo-glow"></div>`;
+  const bg = `<div class="sunburst"></div>`;
   if (leader) {
     leaderZone.innerHTML = bg + `
       <div class="leader-outer-box">
