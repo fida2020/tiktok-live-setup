@@ -11,6 +11,16 @@ applications, TikTok/TikFinity login sessions, stream keys, and large media file
 deliberately excluded — see [What's NOT included](#whats-not-included-and-why) and
 [Manual steps](#manual-steps-on-the-new-vps) below.
 
+## `f88-live-overlay/` — separate project
+
+`f88-live-overlay/` is a standalone, self-contained Node.js app (own `package.json`,
+`server.js`, `public/`) — a TikTok LIVE guest-battle overlay with automatic gift-to-guest
+scoring. It does not depend on anything else in this repo and is not driven by the
+`src/` controller described below. See `f88-live-overlay/SETUP_GUIDE.md` for the
+VPS/PC + OBS/TikTok LIVE Studio setup, or `f88-live-overlay/SETUP_GUIDE_MOBILE.md` to run
+the whole thing (control panel + overlay) directly on an Android phone via Termux, with no
+VPS/PC required.
+
 ## How it fits together
 
 ```

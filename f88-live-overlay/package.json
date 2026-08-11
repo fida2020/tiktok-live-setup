@@ -1,0 +1,19 @@
+{
+  "name": "f88-live-overlay",
+  "version": "1.0.0",
+  "description": "TikTok Live guest-battle overlay — automatic gift-to-guest scoring for OBS",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "tiktok-live-connector": "^2.0.0",
+    "ws": "^8.18.0",
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

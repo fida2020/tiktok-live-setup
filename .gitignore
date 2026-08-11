@@ -15,6 +15,7 @@ music/*
 *.mp3
 !assets/**/*.mp4
 !assets/**/*.mp3
+!f88-live-overlay/public/sounds/*.mp3
 
 # Build/scratch artifacts and local Python venv - not portable, regenerate on new machine
 .buildtmp/
