@@ -4,11 +4,11 @@ Final approved version of `public/overlay.html` (9 Guest Battle Arena).
 Do not redesign from scratch again — only make targeted edits if explicitly asked.
 
 ## Locked layout
-- Title: "9 GUEST BATTLE ARENA" — single line, bold gold gradient, top of stage
+- Title: "BATTLE ARENA" (guest-count prefix dropped) — single line, bold gold gradient, larger size, top of stage
 - Round pill below title (⚔ ROUND 1)
 - Middle row (top-aligned, all three columns match the leader photo's height exactly):
   - Left: Leaderboard panel (top 6 guests)
-  - Center: Leader — 4:6 portrait rectangle frame (gold gradient border), slowly-rotating sunburst rays behind it (the pulsing/blinking halo-glow layer was removed — sunburst only, no pulse), LIVE POINTS score shown INSIDE the frame as a bottom banner overlay, name below frame, "LEADER" badge below name
+  - Center: Leader — 4:6 portrait rectangle frame (gold gradient border), no background rays/glow behind it anymore (both the rotating sunburst and the pulsing halo-glow were removed — the gold frame itself is the only accent), LIVE POINTS score shown INSIDE the frame as a bottom banner overlay, name below frame, "LEADER" badge below name
   - Right: Elimination panel (top half) + Recent Gifts panel (bottom half), stacked
 - Below middle row: 2 rows of 4 rank cards each (ranks 2-9), gem-style cards with glass/gradient background, glowing avatar ring, rank badge, name, colored score pill
 - Live comment feed pinned above the bottom safe zone (fixed position, never overlaps guest cards)

@@ -185,7 +185,7 @@
     margin-top:-2px;
   }
   .title-main{
-    font-family:var(--font-title); font-size:26px; letter-spacing:.5px;
+    font-family:var(--font-title); font-size:38px; letter-spacing:.5px;
     white-space:nowrap;
     background:linear-gradient(180deg, #FFF6D8 10%, var(--gold-hot) 60%, #B8860B 100%);
     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
@@ -298,16 +298,6 @@
     display:flex; flex-direction:column; align-items:center;
     position:relative; flex-shrink:0;
   }
-  .sunburst{
-    position:absolute; top:14px; left:50%; transform:translateX(-50%);
-    width:230px; height:230px;
-    background:
-      repeating-conic-gradient(from 0deg, rgba(255,210,76,.22) 0deg 4deg, transparent 4deg 16deg);
-    border-radius:50%;
-    animation:spinSlow 18s linear infinite;
-    pointer-events:none;
-  }
-  @keyframes spinSlow{ to{ transform:translateX(-50%) rotate(360deg); } }
   .leader-crown{
     font-size:26px; filter:drop-shadow(0 0 14px rgba(255,210,76,.9));
     animation:crownFloat 2.2s ease-in-out infinite;
@@ -755,7 +745,7 @@
 
       <div class="title-banner">
         <div class="title-crown">👑</div>
-        <div class="title-main" id="titleMain">9 GUEST BATTLE ARENA</div>
+        <div class="title-main" id="titleMain">BATTLE ARENA</div>
         <div class="round-pill">⚔ ROUND 1</div>
       </div>
 
@@ -766,7 +756,6 @@
         </div>
 
         <div class="leader-zone" id="leaderZone">
-          <div class="sunburst"></div>
         </div>
 
         <div class="side-panel side-panel-stacked">
@@ -1177,12 +1166,11 @@ function render(){
   const top4 = rest.slice(0, 4);
   const bottom4 = rest.slice(4, 8);
 
-  document.getElementById("titleMain").textContent = `${guests.length} GUEST BATTLE ARENA`;
+  document.getElementById("titleMain").textContent = "BATTLE ARENA";
 
   const leaderZone = document.getElementById("leaderZone");
-  const bg = `<div class="sunburst"></div>`;
   if (leader) {
-    leaderZone.innerHTML = bg + `
+    leaderZone.innerHTML = `
       <div class="leader-outer-box">
         <div class="leader-inner-box">
           <div class="leader-ring">
@@ -1197,7 +1185,7 @@ function render(){
       </div>
     `;
   } else {
-    leaderZone.innerHTML = bg;
+    leaderZone.innerHTML = "";
   }
 
   renderGrid("topGrid", top4, sorted);
