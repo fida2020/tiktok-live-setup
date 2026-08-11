@@ -29,7 +29,7 @@ Do not redesign from scratch again — only make targeted edits if explicitly as
 - 9-guest roster, manually added by TikTok username (auto-fetches avatar/name)
 - Scoring: 100% automatic via gift receiverUserId — no manual assignment
 - Round: Start/End manually triggered from control.html
-- Elimination Challenge: automatic — lowest-scoring guest gets a 60s survival timer with a threshold; auto-dropped from roster if they don't reach it in time
+- Elimination Challenge: automatic — lowest-scoring guest gets a 10s survival timer with a threshold; auto-dropped from roster if they don't reach it in time
 - Winner: automatically the highest score when round ends
 - Live comments: real TikTok chat events shown in the feed
 
@@ -56,16 +56,29 @@ Do not redesign from scratch again — only make targeted edits if explicitly as
 - Falls back to our own hand-drawn SVG vector icon set (not emoji) per gift-name keyword match, only when no real image is available (e.g. demo mode)
 - Per-gift accent color drives the screen tint, shockwave rings, and light rays
 
-## Host camera bubble (added, position TBD)
+## Host camera bubble (added)
 - Live round webcam bubble for the host, captured directly by `overlay.html` via
   `getUserMedia` (`.host-cam` / `#hostCamVideo`) — no separate OBS/LIVE Studio camera
   source needed
-- Placeholder position: top-left, above the leader zone (`.host-cam` CSS, `top`/`left`
-  values) — explicitly a temporary spot, meant to be repositioned later
+- Position: right side panel, top half — where the old "Elimination" box used to be
+  (`.host-cam-slot`, inside `.side-panel-stacked`); "Recent Gifts" stays in the bottom half
 - Requires a secure context (`http://localhost:PORT` or any `https://` URL, e.g. an
   ngrok tunnel) — browsers block camera access on a plain `http://` LAN IP
 - Falls back to a camera-off icon (`.cam-offline`) if permission is denied or
   unsupported, without breaking anything else on the page
+
+## Elimination countdown — moved out of its box (changed)
+- The old "Elimination" panel (red box with target name + "need N pts" + timer) is
+  gone — that side-panel slot is now the host camera (above)
+- Just the plain countdown number now floats above the leader zone, top-left
+  (`.elim-timer-float`/`#elimTimerFloat`) — no panel background, no target name, no
+  "need N pts" text, just the `mm:ss` digits in red with a glow; hidden entirely when
+  no one is at risk
+- Who's at risk is still shown via the existing pulsing red border on that guest's
+  rank card (`.rank-card.at-risk`) — unchanged
+- Survival timer duration lowered from 60s to 10s (`DEFAULT_SURVIVAL_SECONDS` in
+  `server.js`); the demo "Tick Elimination Timer" button now ticks down 3s per click
+  to match (was 10s per click)
 
 ## Guest auto-detection (server.js v2.1.0)
 - Listens for TikTok's linkMic co-host join/leave event to auto-detect people currently in the multi-guest call

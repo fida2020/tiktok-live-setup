@@ -40,7 +40,7 @@ const MAX_GUESTS = 9;
 
 // Elimination Challenge defaults — tune these to taste. Exposed to the
 // control panel too, so you can change them per-round without editing code.
-const DEFAULT_SURVIVAL_SECONDS = 60;
+const DEFAULT_SURVIVAL_SECONDS = 10;
 const DEFAULT_SURVIVAL_THRESHOLD = 30; // diamonds the at-risk guest must reach
 
 if (!TIKTOK_USERNAME || TIKTOK_USERNAME === "your_tiktok_username") {
