@@ -6,6 +6,27 @@ Ye guide us case ke liye hai jab poora `server.js` — control panel + overlay d
 Phone hi backend (TikTok se connect, gift-scoring) aur dono web pages
 (`control.html`, `overlay.html`) host karega.
 
+## Zaroori: `overlay.html` sirf tab live stream pe dikhta hai jab koi broadcasting software use ho
+
+`overlay.html` ek local webpage hai — ye apne aap kisi bhi live stream pe nahi aa jata.
+Kisi na kisi software ko ise camera ke upar "layer/compose" karna padta hai:
+
+- **TikTok ki apni official app (seedha "Go LIVE")** — is mein koi bhi external
+  overlay/webpage add karne ka koi option nahi hai. Agar aap isi se live jaate hain,
+  to `overlay.html` sirf aapke apne phone/browser mein dikhega, **viewers ko stream
+  par kabhi nahi dikhega**. Is case mein `server.js` aur `control.html` (guest
+  roster, real-time scores, elimination timer) poori tarah kaam karte hain — bas
+  inhe sirf apne liye ek **private dashboard** ki tarah use karo, alag se
+  `http://localhost:3000/control.html` khol kar.
+- **TikTok LIVE Studio (PC/desktop app)** — is mein "Web Source" add kiya ja sakta
+  hai jo `overlay.html` ko seedha stream mein compose kar deta hai (jaisa
+  `SETUP_GUIDE.md` mein hai). Agar server phone par chal raha ho aur LIVE Studio
+  PC par, dono ko jodne ke liye ek tunnel (jaise ngrok) chahiye hoga.
+- **3rd-party mobile broadcasting app (RTMP)** — kuch apps (Prism Live Studio waghera)
+  camera + web overlay ko mix kar ke RTMP se TikTok pe bhej sakte hain, lekin iske
+  liye TikTok account RTMP/"third-party streaming tools" ke liye eligible hona
+  zaroori hai (TikTok LIVE Center mein check karo) — har account ye offer nahi karta.
+
 ---
 
 ## Kya chahiye
