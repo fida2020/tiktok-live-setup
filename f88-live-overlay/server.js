@@ -377,27 +377,48 @@ async function handleControlMessage(message, socket) {
 }
 
 // ---------------------------------------------------------------------------
-// TikTok LIVE connection
+// TikTok LIVE connection — auto-reconnects with backoff on drop, so a
+// transient network blip (e.g. WebSocket close code 1006) doesn't
+// permanently stop gift-tracking for the rest of the stream. Backoff caps
+// at 30s so it keeps retrying for as long as the process runs, without
+// hammering TikTok if the room is genuinely offline for a while.
 // ---------------------------------------------------------------------------
 const connection = new TikTokLiveConnection(TIKTOK_USERNAME, {});
+const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 30000];
+let reconnectAttempt = 0;
+let reconnectTimer = null;
 
-connection.connect()
-  .then((connState) => {
-    console.log(`✅ Connected to @${TIKTOK_USERNAME}'s LIVE (roomId ${connState.roomId})`);
-    broadcast({ type: "connectionStatus", connected: true });
-  })
-  .catch((err) => {
-    console.error("❌ Could not connect — are you actually live right now on TikTok?");
-    console.error("   Error:", err.message);
-    broadcast({ type: "connectionStatus", connected: false, error: err.message });
-  });
+function connectToTikTok() {
+  connection.connect()
+    .then((connState) => {
+      reconnectAttempt = 0;
+      console.log(`✅ Connected to @${TIKTOK_USERNAME}'s LIVE (roomId ${connState.roomId})`);
+      broadcast({ type: "connectionStatus", connected: true });
+    })
+    .catch((err) => {
+      console.error("❌ Could not connect — are you actually live right now on TikTok?");
+      console.error("   Error:", err.message);
+      broadcast({ type: "connectionStatus", connected: false, error: err.message });
+      scheduleReconnect();
+    });
+}
+
+function scheduleReconnect() {
+  clearTimeout(reconnectTimer);
+  const delay = RECONNECT_DELAYS_MS[Math.min(reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)];
+  reconnectAttempt++;
+  console.log(`   Retrying in ${delay / 1000}s...`);
+  reconnectTimer = setTimeout(connectToTikTok, delay);
+}
+
+connectToTikTok();
 
 connection.on("disconnected", (info) => {
   const code = info?.code;
   const reason = info?.reason || "(no reason given)";
   console.warn(`⚠️ Disconnected from TikTok LIVE. code=${code} reason=${reason}`);
-  console.warn("   If you're still live on TikTok, this is likely a dropped WebSocket — restart with npm start to reconnect.");
   broadcast({ type: "connectionStatus", connected: false });
+  scheduleReconnect();
 });
 
 connection.on(WebcastEvent.GIFT, (data) => {
@@ -515,6 +536,7 @@ connection.on(WebcastEvent.CHAT, (data) => {
 process.on("SIGINT", () => {
   console.log("\nShutting down…");
   clearTimeout(eliminationTimer);
+  clearTimeout(reconnectTimer);
   connection.disconnect();
   process.exit(0);
 });
