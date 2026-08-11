@@ -80,6 +80,10 @@ f88-live-overlay/
 
 ## Agar kuch kaam na kare
 
+- **Host camera bubble khali/camera-off icon dikha rahi hai** → overlay pehli baar
+  khulte hi browser camera permission maangega, "Allow" karo. `http://localhost:3000/overlay.html`
+  ya koi bhi `https://` URL (jaise ngrok) pe hi camera kaam karega — plain `http://` LAN IP
+  (jaise `http://192.168.x.x:3000`) pe browser camera access block kar deta hai.
 - **"Could not connect — are you live right now?"** → pehle TikTok pe actually live jao, phir `npm start` chalao (ya `Ctrl+C` se rok ke dobara `npm start`)
 - **Control panel "Disconnected" dikhaye** → check karo `npm start` abhi bhi chal raha hai
 - **Sounds na bajein** → overlay source pe ek baar click karo (autoplay rule); `sounds/` folder sahi jagah check karo

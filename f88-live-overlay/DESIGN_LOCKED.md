@@ -56,6 +56,17 @@ Do not redesign from scratch again — only make targeted edits if explicitly as
 - Falls back to our own hand-drawn SVG vector icon set (not emoji) per gift-name keyword match, only when no real image is available (e.g. demo mode)
 - Per-gift accent color drives the screen tint, shockwave rings, and light rays
 
+## Host camera bubble (added, position TBD)
+- Live round webcam bubble for the host, captured directly by `overlay.html` via
+  `getUserMedia` (`.host-cam` / `#hostCamVideo`) — no separate OBS/LIVE Studio camera
+  source needed
+- Placeholder position: top-left, above the leader zone (`.host-cam` CSS, `top`/`left`
+  values) — explicitly a temporary spot, meant to be repositioned later
+- Requires a secure context (`http://localhost:PORT` or any `https://` URL, e.g. an
+  ngrok tunnel) — browsers block camera access on a plain `http://` LAN IP
+- Falls back to a camera-off icon (`.cam-offline`) if permission is denied or
+  unsupported, without breaking anything else on the page
+
 ## Guest auto-detection (server.js v2.1.0)
 - Listens for TikTok's linkMic co-host join/leave event to auto-detect people currently in the multi-guest call
 - Control panel shows detected guests with a live pulse indicator and a single "Add" button — no typing required
