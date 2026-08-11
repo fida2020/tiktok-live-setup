@@ -392,8 +392,11 @@ connection.connect()
     broadcast({ type: "connectionStatus", connected: false, error: err.message });
   });
 
-connection.on("disconnected", () => {
-  console.warn("⚠️ Disconnected from TikTok LIVE.");
+connection.on("disconnected", (info) => {
+  const code = info?.code;
+  const reason = info?.reason || "(no reason given)";
+  console.warn(`⚠️ Disconnected from TikTok LIVE. code=${code} reason=${reason}`);
+  console.warn("   If you're still live on TikTok, this is likely a dropped WebSocket — restart with npm start to reconnect.");
   broadcast({ type: "connectionStatus", connected: false });
 });
 
