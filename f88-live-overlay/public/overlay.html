@@ -139,15 +139,6 @@
     90%{ opacity:.4; }
     100%{ transform:translateY(-780px) translateX(var(--drift-x, 20px)); opacity:0; }
   }
-  .backdrop-hint{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    opacity:.28; z-index:1;
-  }
-  .backdrop-hint span{
-    font-family:var(--font-mono); font-size:9px; color:#6a6478; letter-spacing:.5px;
-  }
-
   #stage{
     position:absolute; inset:0;
     display:flex;
@@ -162,7 +153,7 @@
     overflow:hidden;
   }
 
-  .demo-badge{
+  .status-badge{
     position:absolute; top:14px; left:50%; transform:translateX(-50%);
     background:rgba(255,210,76,.16); border:1px solid rgba(255,210,76,.5);
     color:var(--gold); font-family:var(--font-mono); font-size:9px;
@@ -692,25 +683,9 @@
     100%{ transform:translateY(-90px) scale(.2); opacity:0; }
   }
 
-  .demo-controls{
-    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-    display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:400px; z-index:999;
-  }
-  .demo-controls button{
-    font-family:var(--font-body); font-size:10px; font-weight:600;
-    padding:7px 11px; border-radius:8px; border:1px solid #3a3a45;
-    background:#1c1c22; color:#fff; cursor:pointer;
-  }
-  .demo-controls button:hover{ border-color:var(--gold); color:var(--gold); }
-  .demo-note{
-    position:fixed; top:20px; left:50%; transform:translateX(-50%);
-    font-size:11px; color:#8a8a99; text-align:center; max-width:340px;
-  }
 </style>
 </head>
 <body>
-
-<p class="demo-note">Preview mode — this is exactly what your streaming software will show, minus the phone frame, which only exists here for context.</p>
 
 <div class="phone-frame">
   <div class="phone-notch"></div>
@@ -733,10 +708,8 @@
       <div class="curtain curtain-right"></div>
     </div>
 
-    <div class="backdrop-hint"><span>This gold arena background fills the whole frame. If a guest's own camera is showing too, it sits on its own source underneath this one in TikTok LIVE Studio.</span></div>
-
     <div id="stage">
-      <div class="demo-badge">LIVE PREVIEW</div>
+      <div class="status-badge" id="statusBadge">CONNECTING…</div>
 
       <div class="toast-stack" id="toastStack"></div>
       <div class="particle-layer" id="particleLayer"></div>
@@ -798,16 +771,6 @@
 
     </div>
   </div>
-</div>
-
-<div class="demo-controls">
-  <button id="btnGift">🎁 Simulate Gift</button>
-  <button id="btnBigGift">💎 Simulate BIG Gift</button>
-  <button id="btnTickTimer">⏱ Tick Elimination Timer</button>
-  <button id="btnWin">👑 Show Round Win</button>
-  <button id="btnEliminate">💀 Show Elimination</button>
-  <button id="btnComment">💬 Simulate Comment</button>
-  <button id="btnAddGuest">👋 Simulate Guest Join</button>
 </div>
 
 <script>
@@ -1119,37 +1082,12 @@ const PALETTE = [
   "#12A3F9","#FF9E00","#A8F956","#BF2CFF","#A243FF","#FF4102","#0494FF","#FF4102"
 ];
 
-let guests = [
-  { id: "1", name: "Ayesha Khan", score: 12450, avatar: null },
-  { id: "2", name: "Usman Butt",  score: 9850,  avatar: null },
-  { id: "3", name: "Sara Queen",  score: 7650,  avatar: null },
-  { id: "4", name: "Shayan Raj",  score: 6240,  avatar: null },
-  { id: "5", name: "Mehak Ali",   score: 5100,  avatar: null },
-  { id: "6", name: "Bilal Jutt",  score: 3980,  avatar: null },
-  { id: "7", name: "Hina Malik",  score: 2750,  avatar: null },
-  { id: "8", name: "Ali Raza",    score: 1850,  avatar: null },
-  { id: "9", name: "Kamran",      score: 900,   avatar: null }
-];
-
-let elimination = {
-  targetId: "9",
-  targetName: "Kamran",
-  threshold: 930,
-  startScore: 900,
-  deadline: Date.now() + 10000
-};
-
-let recentGifts = [
-  { sender: "Malik Hamza", gift: "Rose", amount: 1 },
-  { sender: "Queen Fan", gift: "Perfume", amount: 45 },
-  { sender: "Ziddi Boy", gift: "Lion", amount: 500 }
-];
-
-let recentComments = [
-  { name: "Malik Hamza", comment: "Ayesha is the best! 🔥🔥" },
-  { name: "Queen Fan", comment: "Let's go Ayesha! 💖💖" },
-  { name: "Ziddi Boy", comment: "Big respect Ayesha Khan 👑" }
-];
+// Real state only — populated entirely from the server over WebSocket
+// (see connectToServer() below). Starts empty; nothing here is sample data.
+let guests = [];
+let elimination = null;
+let recentGifts = [];
+let recentComments = [];
 const COMMENT_COLORS = ["#FFD24C","#12A3F9","#FF4102","#A8F956","#BF2CFF"];
 function colorForName(name){
   let hash = 0;
@@ -1469,101 +1407,60 @@ function showEliminated(name){
 render();
 setInterval(() => { if (elimination) renderEliminationPanel(); }, 1000);
 
-// ---- Demo controls ----
-const sampleSenders = ["fatima.k", "streamfan92", "usman_live", "gift_queen"];
-const smallGifts = [{ name:"Rose", value:1 }, { name:"GG", value:25 }];
-const bigGifts = [{ name:"Galaxy", value:1000 }, { name:"Lion", value:500 }];
-
-document.getElementById("btnGift").addEventListener("click", () => {
-  const guest = guests[Math.floor(Math.random()*guests.length)];
-  const gift = smallGifts[Math.floor(Math.random()*smallGifts.length)];
-  const sender = sampleSenders[Math.floor(Math.random()*sampleSenders.length)];
-  guest.score += gift.value;
-  recentGifts.unshift({ sender, gift: gift.name, amount: gift.value });
-  render();
-  showToast({ sender, gift: gift.name, amount: gift.value });
-  burstParticles(false);
-});
-document.getElementById("btnBigGift").addEventListener("click", () => {
-  const guest = guests[Math.floor(Math.random()*guests.length)];
-  const gift = bigGifts[Math.floor(Math.random()*bigGifts.length)];
-  const sender = sampleSenders[Math.floor(Math.random()*sampleSenders.length)];
-  guest.score += gift.value;
-  recentGifts.unshift({ sender, gift: gift.name, amount: gift.value });
-  render();
-  showToast({ sender, gift: gift.name, amount: gift.value });
-  burstParticles(true);
-  showGiftCelebration(gift.name);
-});
-document.getElementById("btnTickTimer").addEventListener("click", () => {
-  if (!elimination) return;
-  elimination.deadline -= 3000;
-  if (elimination.deadline <= Date.now()) {
-    const name = elimination.targetName;
-    guests = guests.filter(g => g.id !== elimination.targetId);
-    elimination = null;
-    render();
-    showEliminated(name);
-  } else {
-    renderEliminationPanel();
-  }
-});
-document.getElementById("btnWin").addEventListener("click", showWin);
-document.getElementById("btnEliminate").addEventListener("click", () => {
-  showEliminated(elimination ? elimination.targetName : "Kamran");
-});
-document.getElementById("btnComment").addEventListener("click", () => {
-  const sampleComments = ["Let's go! 🔥", "Amazing battle 👑", "Who's winning??", "Sending more gifts now 💎", "This is so fun 😂"];
-  const name = sampleSenders[Math.floor(Math.random()*sampleSenders.length)];
-  const comment = sampleComments[Math.floor(Math.random()*sampleComments.length)];
-  recentComments.push({ name, comment });
-  renderComments();
-});
-document.getElementById("btnAddGuest").addEventListener("click", () => {
-  if (guests.length >= 9) return;
-  const demoNames = ["Rida", "Talha", "Noor", "Fahad", "Zara"];
-  const name = demoNames[Math.floor(Math.random() * demoNames.length)] + " " + (guests.length + 1);
-  guests.push({ id: "demo_" + Date.now(), name, score: 0, avatar: null });
-  render();
-  playJoinSound();
-});
-
-(function connectToServerIfAvailable(){
+// ===========================================================================
+// LIVE CONNECTION — this page has no demo/simulate mode. Everything shown
+// (guests, scores, gifts, comments, elimination timer) comes from real
+// TikTok LIVE events relayed by server.js over this WebSocket.
+// ===========================================================================
+function connectToServer(){
+  const statusBadge = document.getElementById("statusBadge");
+  let ws;
   try {
-    const ws = new WebSocket(`ws://localhost:3000`);
-    ws.onopen = () => {
-      document.querySelector(".demo-badge").textContent = "LIVE";
-      document.querySelector(".demo-controls").style.display = "none";
-      document.querySelector(".demo-note").style.display = "none";
-      document.querySelector(".backdrop-hint").style.display = "none";
-    };
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "state") {
-        const previousIds = new Set(guests.map(g => g.id));
-        const newlyAdded = (msg.guests || []).filter(g => !previousIds.has(g.id));
-        guests = msg.guests;
-        elimination = msg.elimination;
-        render();
-        newlyAdded.forEach(() => playJoinSound());
-      } else if (msg.type === "gift") {
-        recentGifts.unshift({ sender: msg.senderName, gift: msg.giftName, amount: msg.diamonds, giftImage: msg.giftImage });
-        showToast({ sender: msg.senderName, gift: msg.giftName, amount: msg.diamonds });
-        burstParticles(msg.diamonds >= 500);
-        if (msg.diamonds >= 500) showGiftCelebration(msg.giftName, msg.giftImage);
-      } else if (msg.type === "viewerJoin") {
-        // (join ticker omitted from this layout to match the reference)
-      } else if (msg.type === "roundEnded" && msg.winner) {
-        showWin();
-      } else if (msg.type === "eliminated") {
-        showEliminated(msg.name);
-      } else if (msg.type === "chat") {
-        recentComments.push({ name: msg.name, comment: msg.comment });
-        renderComments();
-      }
-    };
-  } catch (e) {}
-})();
+    ws = new WebSocket(`ws://${location.host}`);
+  } catch (e) {
+    statusBadge.textContent = "CONNECTION FAILED";
+    return;
+  }
+
+  ws.onopen = () => {
+    statusBadge.textContent = "LIVE";
+  };
+  ws.onclose = () => {
+    statusBadge.textContent = "DISCONNECTED";
+    setTimeout(connectToServer, 3000);
+  };
+  ws.onerror = () => {
+    statusBadge.textContent = "DISCONNECTED";
+  };
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === "state") {
+      const previousIds = new Set(guests.map(g => g.id));
+      const newlyAdded = (msg.guests || []).filter(g => !previousIds.has(g.id));
+      guests = msg.guests;
+      elimination = msg.elimination;
+      render();
+      newlyAdded.forEach(() => playJoinSound());
+    } else if (msg.type === "gift") {
+      recentGifts.unshift({ sender: msg.senderName, gift: msg.giftName, amount: msg.diamonds, giftImage: msg.giftImage });
+      showToast({ sender: msg.senderName, gift: msg.giftName, amount: msg.diamonds });
+      burstParticles(msg.diamonds >= 500);
+      if (msg.diamonds >= 500) showGiftCelebration(msg.giftName, msg.giftImage);
+    } else if (msg.type === "viewerJoin") {
+      // (join ticker omitted from this layout to match the reference)
+    } else if (msg.type === "roundEnded" && msg.winner) {
+      showWin();
+    } else if (msg.type === "eliminated") {
+      showEliminated(msg.name);
+    } else if (msg.type === "chat") {
+      recentComments.push({ name: msg.name, comment: msg.comment });
+      renderComments();
+    } else if (msg.type === "connectionStatus") {
+      statusBadge.textContent = msg.connected ? "LIVE" : "TIKTOK OFFLINE";
+    }
+  };
+}
+connectToServer();
 </script>
 
 </body>

@@ -3,7 +3,7 @@
 //
 // Runs three jobs:
 //   1. Connects to your TikTok LIVE room and tracks gift-diamond totals
-//      per guest automatically, using each gift event's receiverUserId —
+//      per guest automatically, using each gift event's toUser (receiver) —
 //      TikTok itself tells us which specific guest a gift was sent to,
 //      so no manual assignment or comment-reading is ever needed.
 //   2. Serves overlay.html (for your streaming software) and
@@ -37,6 +37,30 @@ const { TikTokLiveConnection, WebcastEvent } = require("tiktok-live-connector");
 const PORT = process.env.PORT || 3000;
 const TIKTOK_USERNAME = process.env.TIKTOK_USERNAME;
 const MAX_GUESTS = 9;
+
+// ---------------------------------------------------------------------------
+// tiktok-live-connector (v2.4.x) decodes TikTok's raw protobuf schema
+// directly — event payloads use fields like `user.displayId` (not
+// `uniqueId`) and `user.avatarMedium.urlList[0]` (not `profilePictureUrl`).
+// These two helpers centralize that mapping everywhere a live event's user
+// data is read below.
+// ---------------------------------------------------------------------------
+function imageUrl(imageModel) {
+  return (imageModel && imageModel.urlList && imageModel.urlList[0]) || null;
+}
+
+function userHandle(user) {
+  return user ? user.displayId || String(user.id || "") : "";
+}
+
+function userDisplayName(user) {
+  return user ? user.nickname || userHandle(user) : "Someone";
+}
+
+function userAvatar(user) {
+  if (!user) return null;
+  return imageUrl(user.avatarMedium) || imageUrl(user.avatarThumb) || imageUrl(user.avatarLarge);
+}
 
 // Elimination Challenge defaults — tune these to taste. Exposed to the
 // control panel too, so you can change them per-round without editing code.
@@ -355,7 +379,7 @@ async function handleControlMessage(message, socket) {
 // ---------------------------------------------------------------------------
 // TikTok LIVE connection
 // ---------------------------------------------------------------------------
-const connection = new TikTokLiveConnection(TIKTOK_USERNAME);
+const connection = new TikTokLiveConnection(TIKTOK_USERNAME, {});
 
 connection.connect()
   .then((connState) => {
@@ -368,32 +392,31 @@ connection.connect()
     broadcast({ type: "connectionStatus", connected: false, error: err.message });
   });
 
-connection.on("disconnect", () => {
+connection.on("disconnected", () => {
   console.warn("⚠️ Disconnected from TikTok LIVE.");
   broadcast({ type: "connectionStatus", connected: false });
 });
 
 connection.on(WebcastEvent.GIFT, (data) => {
-  const isStreakable = data.giftType === 1;
+  const isStreakable = data.gift?.type === 1;
   if (isStreakable && !data.repeatEnd) return;
 
-  const diamonds = (data.diamondCount || 0) * (data.repeatCount || 1);
+  const diamonds = (data.gift?.diamondCount || 0) * (data.repeatCount || 1);
   if (diamonds <= 0) return;
 
-  const receiverUserId = String(
-    data.receiverUserId || (data.monitorExtra && data.monitorExtra.to_user_id) || ""
-  );
+  const receiverUserId = String(data.toUser?.id || data.toMemberIdInt || data.toMemberId || "");
   if (!receiverUserId) return;
 
   let guest = findGuestById(receiverUserId);
-  if (!guest && data.receiverUser) {
+  if (!guest && data.toUser) {
+    const toHandle = userHandle(data.toUser).toLowerCase();
     guest = state.guests.find(
-      (g) => g.id.startsWith("pending_") && g.username.toLowerCase() === (data.receiverUser.uniqueId || "").toLowerCase()
+      (g) => g.id.startsWith("pending_") && g.username.toLowerCase() === toHandle
     );
     if (guest) {
       guest.id = receiverUserId;
-      guest.name = data.receiverUser.nickname || guest.name;
-      guest.avatar = data.receiverUser.profilePictureUrl || guest.avatar;
+      guest.name = data.toUser.nickname || guest.name;
+      guest.avatar = userAvatar(data.toUser) || guest.avatar;
     }
   }
   if (!guest) return;
@@ -407,9 +430,9 @@ connection.on(WebcastEvent.GIFT, (data) => {
     guestName: guest.name,
     newScore: guest.score,
     diamonds,
-    giftName: data.giftName || "Gift",
-    giftImage: data.giftPictureUrl || null,
-    senderName: data.user ? (data.user.nickname || data.user.uniqueId) : "Someone"
+    giftName: data.gift?.name || "Gift",
+    giftImage: imageUrl(data.gift?.image),
+    senderName: userDisplayName(data.user)
   });
   broadcast({ type: "state", ...getPublicState() });
 
@@ -422,19 +445,25 @@ connection.on(WebcastEvent.GIFT, (data) => {
 // "detected guests, one click to add" list, so you never have to type
 // a username for people who are already visibly in the call.
 //
-// NOTE: this event's exact payload shape is less documented than gift
-// events, so this is defensive/best-effort. If it doesn't pick someone
-// up on your setup, the manual "add by username" field in the control
-// panel is always there as a reliable fallback — nothing else in the
-// app depends on this working perfectly.
+// NOTE: on the installed tiktok-live-connector version (2.4.x), TikTok's
+// WebcastLinkMicMethod payload only carries a bare numeric `userId` — no
+// nickname or avatar at all (unlike gift/chat/follow events, which do
+// carry a full user object). So a detected guest shows up here with just
+// their numeric ID as a placeholder name/username; there's no way to
+// resolve their real name/avatar from this event. The manual "add by
+// username" field in the control panel remains the reliable path — once
+// someone is added (by either route) and actually sends a gift, the GIFT
+// handler above still scores it correctly by ID regardless.
 // ---------------------------------------------------------------------------
 connection.on(WebcastEvent.LINK_MIC_METHOD, (data) => {
   try {
-    const user = data.user || (data.linkMicUser && data.linkMicUser.user);
-    if (!user || !user.id) return;
+    const id = String(data.userId || "");
+    if (!id) return;
 
-    const id = String(user.id);
-    const isLeaving = /leave|exit|remove|kick/i.test(data.messageType || data.linkMicMethodType || "");
+    // messageType's join/leave values aren't documented for this schema
+    // version — treat "0" (commonly "unspecified/default") as a leave
+    // signal and anything else as a join, but don't hard-fail either way.
+    const isLeaving = data.messageType === 0;
 
     if (isLeaving) {
       state.detected = state.detected.filter((g) => g.id !== id);
@@ -448,9 +477,9 @@ connection.on(WebcastEvent.LINK_MIC_METHOD, (data) => {
 
     state.detected.push({
       id,
-      username: user.uniqueId || id,
-      name: user.nickname || user.uniqueId || "Guest",
-      avatar: user.profilePictureUrl || null
+      username: id,
+      name: `Guest ${id.slice(-4)}`,
+      avatar: null
     });
     broadcast({ type: "state", ...getPublicState() });
   } catch (err) {
@@ -461,22 +490,22 @@ connection.on(WebcastEvent.LINK_MIC_METHOD, (data) => {
 connection.on(WebcastEvent.MEMBER, (data) => {
   broadcast({
     type: "viewerJoin",
-    name: data.user ? (data.user.nickname || data.user.uniqueId) : "Someone"
+    name: userDisplayName(data.user)
   });
 });
 
 connection.on(WebcastEvent.FOLLOW, (data) => {
   broadcast({
     type: "newFollower",
-    name: data.user ? (data.user.nickname || data.user.uniqueId) : "Someone"
+    name: userDisplayName(data.user)
   });
 });
 
 connection.on(WebcastEvent.CHAT, (data) => {
   broadcast({
     type: "chat",
-    name: data.user ? (data.user.nickname || data.user.uniqueId) : "Someone",
-    comment: data.comment || ""
+    name: userDisplayName(data.user),
+    comment: data.content || ""
   });
 });
 

@@ -145,6 +145,22 @@ Agar tunnel bhi chahiye (Step 6), doosre session mein `ngrok http 3000` bhi chal
 
 `npm install` aur `.env` sirf pehli baar karna tha.
 
+## Project update karna (jab bhi naya code aaye)
+
+Jab bhi overlay/server.js mein changes hon (jaise ye repo update hoti hai),
+phone par sirf itna chalao — `.env` file safe rehti hai, dobara banane ki
+zaroorat nahi:
+
+```
+cd ~/tiktok-live-setup
+git pull origin claude/project-ko-mobile-setup-1u5fta
+cd f88-live-overlay
+npm install
+```
+
+(`npm install` sirf tab zaroori hai jab `package.json`/`package-lock.json`
+change hui ho — baaki har baar `git pull` hi kaafi hai.)
+
 ---
 
 ## Termux-specific dikkatein
