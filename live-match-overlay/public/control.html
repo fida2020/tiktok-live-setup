@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Live Match — Control Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#FFD700;
+    --blue:#5AC8FF;
+    --buy:#16C784;
+    --sell:#FF4D4F;
+    --bg:#0B0E13;
+    --panel:#161B22;
+    --border:#2a3038;
+    --ink:#F5F3EF;
+    --ink-dim:#9aa3af;
+    --font-body:'Poppins',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding:20px;
+  }
+  .wrap{max-width:520px; margin:0 auto;}
+  h1{font-size:19px; margin-bottom:4px;}
+  .status-line{font-size:12px; color:var(--ink-dim); font-family:var(--font-mono); margin-bottom:20px;}
+  .status-line.connected{color:var(--buy);}
+  .status-line.disconnected{color:var(--sell);}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:16px;
+  }
+  .panel h2{font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--ink-dim); margin-bottom:12px;}
+  .panel-hint{font-size:11px; color:var(--ink-dim); margin-top:-6px; margin-bottom:12px; line-height:1.5;}
+
+  .row{display:flex; gap:8px; margin-bottom:10px;}
+  .row input{
+    flex:1;
+    background:#0d1117;
+    border:1px solid var(--border);
+    color:var(--ink);
+    padding:10px 12px;
+    border-radius:8px;
+    font-family:var(--font-mono);
+    font-size:13px;
+  }
+  .row button{
+    border:none;
+    font-weight:700;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:12px;
+    flex-shrink:0;
+  }
+  .btn-gold{ background:var(--gold); color:#0B0E13; }
+  .btn-gold:hover{ background:#FFE55C; }
+  .btn-blue{ background:var(--blue); color:#0B0E13; }
+  .btn-blue:hover{ background:#8AD8FF; }
+  .btn-gold:disabled, .btn-blue:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .mvp-preview{
+    display:flex; align-items:center; gap:10px;
+    background:#0d1117; border:1px solid var(--border); border-radius:10px;
+    padding:8px 10px; margin-bottom:10px;
+    font-size:12px; color:var(--ink-dim);
+    min-height:44px;
+  }
+  .mvp-preview img{
+    width:32px; height:32px; border-radius:50%; object-fit:cover;
+    border:1px solid var(--gold);
+  }
+  .mvp-preview.error{ color:var(--sell); }
+
+  .level-buttons{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .level-buttons button{
+    background:#0d1117; border:1px solid var(--border); color:var(--ink);
+    padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px;
+    font-family:var(--font-mono); font-weight:700;
+  }
+  .level-buttons button.selected{ border-color:var(--blue); color:var(--blue); background:rgba(90,200,255,.1); }
+
+  .full-width{ width:100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 Live Match — Control Panel</h1>
+  <div class="status-line" id="statusLine">Connecting…</div>
+
+  <div class="panel">
+    <h2>MVP Animation</h2>
+    <p class="panel-hint">TikTok username daal kar "Fetch Profile" dabayein — real naam/DP aa jayegi, phir "Show MVP" se overlay pe animation chalegi.</p>
+    <div class="row">
+      <input type="text" id="mvpUsername" placeholder="TikTok username (bina @ ke)" />
+      <button class="btn-gold" id="btnFetch">Fetch Profile</button>
+    </div>
+    <div class="mvp-preview" id="mvpPreview">Koi profile fetch nahi hui abhi.</div>
+    <button class="btn-gold full-width" id="btnShowMVP" disabled>👑 Show MVP</button>
+  </div>
+
+  <div class="panel">
+    <h2>Level Up Animation</h2>
+    <p class="panel-hint">Level number choose karein, phir "Show Level Up" dabayein.</p>
+    <div class="level-buttons" id="levelButtons"></div>
+    <button class="btn-blue full-width" id="btnShowLevelUp">⚡ Show Level Up</button>
+  </div>
+</div>
+
+<script>
+const statusLine = document.getElementById("statusLine");
+let ws;
+let selectedLevel = 1;
+let fetchedProfile = null;
+
+function connect(){
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => {
+    statusLine.textContent = "Connected to overlay server";
+    statusLine.className = "status-line connected";
+  };
+  ws.onclose = () => {
+    statusLine.textContent = "Disconnected — retrying…";
+    statusLine.className = "status-line disconnected";
+    setTimeout(connect, 3000);
+  };
+  ws.onerror = () => {
+    statusLine.textContent = "Disconnected — retrying…";
+    statusLine.className = "status-line disconnected";
+  };
+}
+connect();
+
+function send(message){
+  if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));
+}
+
+// --- MVP ---
+const mvpUsername = document.getElementById("mvpUsername");
+const mvpPreview = document.getElementById("mvpPreview");
+const btnFetch = document.getElementById("btnFetch");
+const btnShowMVP = document.getElementById("btnShowMVP");
+
+btnFetch.addEventListener("click", async () => {
+  const username = mvpUsername.value.trim().replace(/^@/, "");
+  if (!username) return;
+
+  btnFetch.disabled = true;
+  btnFetch.textContent = "Fetching…";
+  mvpPreview.className = "mvp-preview";
+  mvpPreview.textContent = "Fetching profile…";
+
+  try {
+    const res = await fetch(`/api/lookup?username=${encodeURIComponent(username)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Lookup failed.");
+
+    fetchedProfile = data;
+    mvpPreview.innerHTML = `
+      ${data.avatar ? `<img src="${data.avatar}" alt="" />` : ""}
+      <span>${data.name} (@${data.username})</span>
+    `;
+    btnShowMVP.disabled = false;
+  } catch (err) {
+    fetchedProfile = null;
+    mvpPreview.className = "mvp-preview error";
+    mvpPreview.textContent = `⚠️ ${err.message}`;
+    btnShowMVP.disabled = true;
+  } finally {
+    btnFetch.disabled = false;
+    btnFetch.textContent = "Fetch Profile";
+  }
+});
+
+btnShowMVP.addEventListener("click", () => {
+  if (!fetchedProfile) return;
+  send({ type: "showMVP", name: fetchedProfile.name, avatar: fetchedProfile.avatar });
+});
+
+// --- Level Up ---
+const levelButtonsEl = document.getElementById("levelButtons");
+for (let i = 1; i <= 10; i++) {
+  const btn = document.createElement("button");
+  btn.textContent = i;
+  btn.className = i === selectedLevel ? "selected" : "";
+  btn.addEventListener("click", () => {
+    selectedLevel = i;
+    [...levelButtonsEl.children].forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+  });
+  levelButtonsEl.appendChild(btn);
+}
+
+document.getElementById("btnShowLevelUp").addEventListener("click", () => {
+  send({ type: "showLevelUp", level: selectedLevel });
+});
+</script>
+</body>
+</html>

@@ -11,15 +11,23 @@ applications, TikTok/TikFinity login sessions, stream keys, and large media file
 deliberately excluded — see [What's NOT included](#whats-not-included-and-why) and
 [Manual steps](#manual-steps-on-the-new-vps) below.
 
-## `f88-live-overlay/` — separate project
+## Standalone overlay projects
 
-`f88-live-overlay/` is a standalone, self-contained Node.js app (own `package.json`,
-`server.js`, `public/`) — a TikTok LIVE guest-battle overlay with automatic gift-to-guest
-scoring. It does not depend on anything else in this repo and is not driven by the
-`src/` controller described below. See `f88-live-overlay/SETUP_GUIDE.md` for the
-VPS/PC + OBS/TikTok LIVE Studio setup, or `f88-live-overlay/SETUP_GUIDE_MOBILE.md` to run
-the whole thing (control panel + overlay) directly on an Android phone via Termux, with no
-VPS/PC required.
+Two folders here are standalone Node.js apps (their own `package.json`/`server.js`/`public/`),
+independent of the `src/` controller described below:
+
+- **`f88-live-overlay/`** — a TikTok LIVE guest-battle overlay with automatic gift-to-guest
+  scoring (real TikTok LIVE connection required). See `f88-live-overlay/SETUP_GUIDE.md` for
+  VPS/PC + OBS/TikTok LIVE Studio setup, or `f88-live-overlay/SETUP_GUIDE_MOBILE.md` to run
+  it entirely on an Android phone via Termux, no VPS/PC required.
+- **`live-match-overlay/`** — a simple animated background overlay plus two manually-triggered
+  celebration animations (MVP with name+photo, Level Up with a number). No TikTok LIVE
+  connection at all — everything fires from its control panel. See
+  `live-match-overlay/SETUP_GUIDE.md` / `SETUP_GUIDE_MOBILE.md`.
+
+Both need a broadcasting tool (OBS, TikTok LIVE Studio, or an RTMP-capable app) to actually
+composite their overlay onto a live stream — TikTok's own mobile app has no way to show an
+external webpage on a native "Go LIVE" broadcast.
 
 ## How it fits together
 
